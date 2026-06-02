@@ -1,36 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  WifiOff,
-  Gift,
-  MessageSquare,
-  Heart,
-  UserPlus,
-  Loader2,
-  Terminal,
-  Users,
-  Radio,
+  WifiOff, Gift, MessageSquare, Heart,
+  UserPlus, Loader2, Terminal, Users, Radio,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { announcementApi, authApi } from '../services/api';
 import { useTikTok, LogEntry } from '../context/TikTokContext';
+import { interactiveApi } from '../services/api';
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-
 const StatCard: React.FC<{
-  label: string;
-  value: number | string;
-  icon: React.ReactNode;
-  accent: string;
+  label: string; value: number | string;
+  icon: React.ReactNode; accent: string;
 }> = ({ label, value, icon, accent }) => (
-  <div
-    className="flex items-center gap-3 px-4 py-3 rounded-xl border"
-    style={{ background: `${accent}0d`, borderColor: `${accent}22` }}
-  >
-    <div
-      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-      style={{ background: `${accent}18`, color: accent }}
-    >
+  <div className="flex items-center gap-3 px-4 py-3 rounded-xl border"
+    style={{ background: `${accent}0d`, borderColor: `${accent}22` }}>
+    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+      style={{ background: `${accent}18`, color: accent }}>
       {icon}
     </div>
     <div>
@@ -45,7 +32,6 @@ const StatCard: React.FC<{
 );
 
 // ─── Log Panel ────────────────────────────────────────────────────────────────
-
 const LOG_COLORS: Record<string, { accent: string; dimAccent: string }> = {
   gift:    { accent: '#a78bfa', dimAccent: '#a78bfa66' },
   comment: { accent: '#60a5fa', dimAccent: '#60a5fa66' },
@@ -56,22 +42,22 @@ const LOG_COLORS: Record<string, { accent: string; dimAccent: string }> = {
 
 const LogPanel: React.FC<{
   type: 'gift' | 'comment' | 'like' | 'follow' | 'system';
-  title: string;
-  icon: React.ReactNode;
-  logs: LogEntry[];
-  scrollRef: React.RefObject<HTMLDivElement>;
+  title: string; icon: React.ReactNode;
+  logs: LogEntry[]; scrollRef: React.RefObject<HTMLDivElement>;
   renderLine: (log: LogEntry) => React.ReactNode;
 }> = ({ type, title, icon, logs, scrollRef, renderLine }) => {
   const { accent, dimAccent } = LOG_COLORS[type];
-
   return (
-    <div className="flex flex-col rounded-2xl overflow-hidden h-full" style={{ background: '#0d0d14', border: '1px solid rgba(255,255,255,0.06)' }}>
-      <div className="flex items-center justify-between px-4 py-2.5 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+    <div className="flex flex-col rounded-2xl overflow-hidden h-full"
+      style={{ background: '#0d0d14', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center justify-between px-4 py-2.5 shrink-0"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="flex items-center gap-2" style={{ color: accent }}>
           {icon}
           <span className="text-[10px] font-black uppercase tracking-widest">{title}</span>
         </div>
-        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full" style={{ background: `${accent}18`, color: accent }}>
+        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full"
+          style={{ background: `${accent}18`, color: accent }}>
           {logs.length}
         </span>
       </div>
@@ -82,12 +68,10 @@ const LogPanel: React.FC<{
           </div>
         ) : (
           logs.map((log) => (
-            <div
-              key={log.id}
+            <div key={log.id}
               className="flex gap-2 px-2 py-1 rounded-lg font-mono text-[10px] transition-colors"
               onMouseEnter={e => (e.currentTarget.style.background = `${accent}0a`)}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
               <span className="shrink-0 opacity-30" style={{ color: accent }}>[{log.time}]</span>
               {renderLine(log)}
             </div>
@@ -99,12 +83,11 @@ const LogPanel: React.FC<{
 };
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const {
-    connected, isConnecting, hasFirstEvent,
+    connected, isConnecting, appStatus,
     roomUser, setRoomUser,
     giftLogs, commentLogs, likeLogs, followLogs, systemLogs,
     stats,
@@ -136,36 +119,57 @@ const Dashboard: React.FC = () => {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
   };
 
-  useEffect(() => {
-    announcementApi.getAnnouncements()
-      .then(res => setAnnouncements(res.data))
-      .catch(() => {});
-  }, []);
-
+  useEffect(() => { announcementApi.getAnnouncements().then(res => setAnnouncements(res.data)).catch(() => {}); }, []);
   useEffect(() => scrollToBottom(giftRef),    [giftLogs]);
   useEffect(() => scrollToBottom(commentRef), [commentLogs]);
   useEffect(() => scrollToBottom(likeRef),    [likeLogs]);
   useEffect(() => scrollToBottom(followRef),  [followLogs]);
   useEffect(() => scrollToBottom(systemRef),  [systemLogs]);
 
-  const handleConnectToggle = () => {
+  const handleConnectToggle = async () => {
     if (isConnecting) return;
-    if (connected) disconnect();
-    else if (roomUser) connect(roomUser);
+    if (connected) { disconnect(); return; }
+    if (!roomUser) return;
+
+    localStorage.setItem('aclass_last_tiktok_user', roomUser);
+
+    const activeOrderId = localStorage.getItem('aclass_active_order_id');
+    if (activeOrderId) {
+      try {
+        await interactiveApi.registerSession(activeOrderId, roomUser);
+      } catch (err) {
+        console.warn('registerSession failed:', err);
+      }
+    }
+
+    connect(roomUser);
   };
+
+  // ─── Status pill style & label ────────────────────────────────────────────
+  const statusStyle =
+    appStatus === 'LIVE'
+      ? { background: 'rgba(52,211,153,0.1)',  color: '#34d399', border: '1px solid rgba(52,211,153,0.2)'  }
+      : appStatus === 'WAIT'
+        ? { background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)' }
+        : { background: 'rgba(255,255,255,0.04)', color: '#6b7280', border: '1px solid rgba(255,255,255,0.08)' };
+
+  const statusLabel =
+    appStatus === 'LIVE' ? <><Radio size={11} className="animate-pulse" /> Live</> :
+    appStatus === 'WAIT' ? <><Loader2 size={11} className="animate-spin" /> Wait…</> :
+    isConnecting         ? <><Loader2 size={11} className="animate-spin" /> Linking…</> :
+                           <><WifiOff size={11} /> Offline</>;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#08080c]">
 
       {/* ── Top Bar ── */}
-      <div className="shrink-0 px-6 py-3 flex items-center gap-4 justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="shrink-0 px-6 py-3 flex items-center gap-4 justify-between"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
 
         {/* Connect input */}
         <div className="flex items-center gap-3">
-          <div
-            className="flex items-center gap-2 px-2 py-1.5 rounded-xl"
-            style={{ background: '#0d0d14', border: '1px solid rgba(255,255,255,0.08)' }}
-          >
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl"
+            style={{ background: '#0d0d14', border: '1px solid rgba(255,255,255,0.08)' }}>
             <span className="text-[11px] font-bold text-text3 pl-1">@</span>
             <input
               type="text"
@@ -192,39 +196,23 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          {/* Status pill — Offline → Linking… → Wait… → Live */}
-          <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-            style={
-              connected && hasFirstEvent
-                ? { background: 'rgba(52,211,153,0.1)',  color: '#34d399', border: '1px solid rgba(52,211,153,0.2)'  }
-                : connected && !hasFirstEvent
-                  ? { background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)' }
-                  : isConnecting
-                    ? { background: 'rgba(251,191,36,0.1)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)' }
-                    : { background: 'rgba(255,255,255,0.04)', color: '#6b7280', border: '1px solid rgba(255,255,255,0.08)' }
-            }
-          >
-            {connected && hasFirstEvent
-              ? <><Radio size={11} className="animate-pulse" /> Live</>
-              : connected && !hasFirstEvent
-                ? <><Loader2 size={11} className="animate-spin" /> Wait…</>
-                : isConnecting
-                  ? <><Loader2 size={11} className="animate-spin" /> Linking…</>
-                  : <><WifiOff size={11} /> Offline</>
-            }
+          {/* ✅ Status pill — ใช้ appStatus โดยตรง */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+            style={statusStyle}>
+            {statusLabel}
           </div>
         </div>
 
         {/* Stats row */}
         <div className="flex items-center gap-3">
-          <StatCard label="Gifts"   value={giftLogs.length}   icon={<Gift size={14} />}  accent="#a78bfa" />
+          <StatCard label="Gifts"   value={giftLogs.length}   icon={<Gift  size={14} />} accent="#a78bfa" />
           <StatCard label="Likes"   value={stats.likeCount}   icon={<Heart size={14} />} accent="#f472b6" />
           <StatCard label="Viewers" value={stats.viewerCount} icon={<Users size={14} />} accent="#34d399" />
         </div>
 
         {/* User */}
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl" style={{ background: '#0d0d14', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl"
+          style={{ background: '#0d0d14', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="w-7 h-7 rounded-lg bg-brand/20 flex items-center justify-center text-brand font-black text-xs">
             {(currentUser?.username || 'G')[0].toUpperCase()}
           </div>
@@ -240,8 +228,10 @@ const Dashboard: React.FC = () => {
 
         {/* Left sidebar — Console */}
         <div className="w-56 flex flex-col gap-3 shrink-0">
-          <div className="flex flex-col rounded-2xl overflow-hidden flex-1" style={{ background: '#0d0d14', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="flex items-center gap-2 px-3 py-2.5 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex flex-col rounded-2xl overflow-hidden flex-1"
+            style={{ background: '#0d0d14', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-2 px-3 py-2.5 shrink-0"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               <Terminal size={12} className="text-text3" />
               <span className="text-[10px] font-black uppercase tracking-widest text-text3">Console</span>
             </div>

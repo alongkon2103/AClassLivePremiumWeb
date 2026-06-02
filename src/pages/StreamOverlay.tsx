@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react'; // เพิ่ม useEffect
 import { useTranslation } from 'react-i18next';
 import {
   Trophy, Save, Download, Upload, Check, Play, RefreshCw, Dices, Power
@@ -8,7 +8,6 @@ import WinCountControls from '../components/overlay/WinCountControls';
 import SpinControls from '../components/overlay/SpinControls';
 import LivePreview from '../components/overlay/LivePreview';
 
-// Array of available templates
 export const TEMPLATES = [
   { id: 'T1', name: 'Neon Cyber', preview: '/assets/T1.jpg' },
   { id: 'T2', name: 'Clean Modern', preview: '/assets/T2.jpg' },
@@ -22,11 +21,20 @@ const StreamOverlayContent: React.FC = () => {
   const [showSaved, setShowSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // แก้ useEffect
+  useEffect(() => {
+    if (activeTab === 'spin') {
+      const timer = setTimeout(() => {
+        triggerSpin(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
+
   const handleManualSave = () => {
     window.electron?.send('settings:save', settings);
     localStorage.setItem('aclass_overlay_settings', JSON.stringify(settings));
     window.dispatchEvent(new Event('storage'));
-
     setShowSaved(true);
     setTimeout(() => setShowSaved(false), 2000);
   };
@@ -42,7 +50,6 @@ const StreamOverlayContent: React.FC = () => {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -59,7 +66,6 @@ const StreamOverlayContent: React.FC = () => {
   const selectedTemplate = TEMPLATES.find(t => t.id === settings.template) ?? TEMPLATES[0];
   const obsOverlayUrl = `http://localhost:5555/overlays/overlay.html`;
   const obsSpinUrl = `http://localhost:5555/overlays/${selectedTemplate.id === 'T1' ? 'spin_1' : selectedTemplate.id === 'T2' ? 'spin_2' : 'spin_3'}.html`;
-
   return (
     <div className="h-screen flex flex-col bg-bg text-text overflow-hidden font-sans">
       {/* ── Header ── */}
@@ -119,9 +125,13 @@ const StreamOverlayContent: React.FC = () => {
             <button
               onClick={() => {
                 if (activeTab === 'wincount') {
+                  const updated = { ...settings, winEnabled: !settings.winEnabled };
                   updateSettings({ winEnabled: !settings.winEnabled });
+                  window.electron?.send('settings:save', updated);
                 } else {
+                  const updated = { ...settings, spinEnabled: !settings.spinEnabled };
                   updateSettings({ spinEnabled: !settings.spinEnabled });
+                  window.electron?.send('settings:save', updated);
                 }
               }}
               className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none shadow-inner ${(activeTab === 'wincount' ? settings.winEnabled : settings.spinEnabled) ? 'bg-brand' : 'bg-surface border border-border'
@@ -209,9 +219,9 @@ const StreamOverlayContent: React.FC = () => {
                   </div>
                 </div>
                 <div className="p-8 flex items-center justify-center min-h-[300px] bg-bg">
-                  <LivePreview 
-                    templateUrl={activeTab === 'wincount' ? obsOverlayUrl : obsSpinUrl} 
-                    title="Live Preview" 
+                  <LivePreview
+                    templateUrl={activeTab === 'wincount' ? obsOverlayUrl : obsSpinUrl}
+                    title="Live Preview"
                     isEnabled={activeTab === 'wincount' ? settings.winEnabled : settings.spinEnabled}
                   />
                 </div>
@@ -256,7 +266,7 @@ const StreamOverlayContent: React.FC = () => {
                         <Dices size={14} className="text-brand" /> Spin Wheel URL
                       </h3>
                       <button
-                        onClick={triggerSpin}
+                        onClick={() => triggerSpin()}  
                         disabled={!settings.spinEnabled}
                         className={`h-8 px-4 rounded-lg font-bold text-[10px] transition-all flex items-center gap-1.5 ${settings.spinEnabled
                             ? 'bg-brand/20 text-brand hover:bg-brand/30'

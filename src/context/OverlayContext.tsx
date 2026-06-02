@@ -78,10 +78,11 @@ interface OverlayContextType {
   settings: OverlaySettings;
   updateSettings: (updates: Partial<OverlaySettings>) => void;
   resetSettings: () => void;
-  triggerSpin: () => void;
+  triggerSpin: (forcePreview?: boolean) => void;
   handleUndo: () => void;
   handleReset: () => void;
   handleQuickAdjust: (val: number) => void;
+
 }
 
 const OverlayContext = createContext<OverlayContextType | undefined>(undefined);
@@ -136,18 +137,18 @@ export const OverlayProvider: React.FC<{ children: ReactNode }> = ({ children })
           // Parse value as number (it might be a string from the UI)
           const numVal = typeof val === 'string' ? parseInt(val) : val;
           if (isNaN(numVal as number)) return prev;
-          
+
           newCount = prev.allowNegative ? prev.winCount + (numVal as number) : Math.max(0, prev.winCount + (numVal as number));
         }
-        
+
         const next = { ...prev, winCount: newCount };
-        
+
         // Save back so other windows see the count change
         window.electron.send('settings:save', next);
         // Explicitly trigger storage event for local tabs
         localStorage.setItem('aclass_overlay_settings', JSON.stringify(next));
         window.dispatchEvent(new Event('storage'));
-        
+
         return next;
       });
     });
@@ -162,16 +163,16 @@ export const OverlayProvider: React.FC<{ children: ReactNode }> = ({ children })
   const updateSettings = useCallback((updates: Partial<OverlaySettings>) => {
     setSettings(prev => {
       const next = { ...prev, ...updates };
-      
+
       // Update local for instant feedback
       localStorage.setItem('aclass_overlay_settings', JSON.stringify(next));
       window.dispatchEvent(new Event('storage'));
-      
+
       // Save to Electron (local JSON file)
       if (window.electron) {
         window.electron.send('settings:save', next);
       }
-      
+
       return next;
     });
   }, []);
@@ -180,32 +181,27 @@ export const OverlayProvider: React.FC<{ children: ReactNode }> = ({ children })
     updateSettings(DEFAULT_SETTINGS);
   }, [updateSettings]);
 
-  const triggerSpin = useCallback(() => {
-    if (!settings.spinEnabled) return;
+  const triggerSpin = useCallback((forcePreview = false) => {
+    if (!settings.spinEnabled && !forcePreview) return; // ✅ preview ข้ามได้
 
     const choices = settings.spinChoices.split(',').map(c => parseInt(c.trim())).filter(c => !isNaN(c));
     const result = choices.length > 0 ? choices[Math.floor(Math.random() * choices.length)] : 0;
-    
-    // 1. Trigger the spin animation
+
     updateSettings({
       spinSeq: (settings.spinSeq || 0) + 1,
       spinResult: result
     });
 
-    // 2. Wait for animation to finish (approx 3s) then update the win counter
     setTimeout(() => {
       setSettings(prev => {
         const newCount = prev.allowNegative ? prev.winCount + result : Math.max(0, prev.winCount + result);
         const next = { ...prev, winCount: newCount };
-        
-        // Save and Broadcast
         window.electron?.send('settings:save', next);
         localStorage.setItem('aclass_overlay_settings', JSON.stringify(next));
         window.dispatchEvent(new Event('storage'));
-        
         return next;
       });
-    }, 3200); // 2.8s animation + buffer
+    }, 3200);
   }, [settings.spinEnabled, settings.spinChoices, settings.spinSeq, updateSettings]);
 
   useEffect(() => {
@@ -217,8 +213,8 @@ export const OverlayProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const handleUndo = useCallback(() => {
     if (!settings.winEnabled) return;
-    updateSettings({ 
-      winCount: settings.allowNegative ? settings.winCount - 1 : Math.max(0, settings.winCount - 1) 
+    updateSettings({
+      winCount: settings.allowNegative ? settings.winCount - 1 : Math.max(0, settings.winCount - 1)
     });
   }, [settings.winEnabled, settings.allowNegative, settings.winCount, updateSettings]);
 
@@ -229,8 +225,8 @@ export const OverlayProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const handleQuickAdjust = useCallback((val: number) => {
     if (!settings.winEnabled) return;
-    updateSettings({ 
-      winCount: settings.allowNegative ? settings.winCount + val : Math.max(0, settings.winCount + val) 
+    updateSettings({
+      winCount: settings.allowNegative ? settings.winCount + val : Math.max(0, settings.winCount + val)
     });
   }, [settings.winEnabled, settings.allowNegative, settings.winCount, updateSettings]);
 

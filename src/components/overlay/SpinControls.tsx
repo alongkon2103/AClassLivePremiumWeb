@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOverlay } from '../../context/OverlayContext';
-import { 
-  Dices, Eye, Keyboard, ChevronDown, ChevronRight, Power 
+import {
+  Dices, Eye, Keyboard, ChevronDown, ChevronRight, Power
 } from 'lucide-react';
 
 const AccordionSection = ({
@@ -71,16 +71,31 @@ const SpinControls: React.FC = () => {
     window.addEventListener('keydown', handler);
   };
 
-  const getSpinChips = () => (settings.spinChoices ?? '').split(',').map((choice, i) => {
-    const val = parseInt(choice.trim());
-    const isNeg = val < 0;
-    if (isNaN(val)) return null;
-    return (
-      <span key={i} className={`px-2 py-0.5 rounded text-[10px] font-bold ${isNeg ? 'bg-red/20 text-red border border-red/30' : 'bg-green/20 text-green border border-green/30'}`}>
-        {val > 0 ? `+${val}` : val}
-      </span>
-    );
-  });
+  const getSpinChips = () =>
+    (settings.spinChoices ?? '').split(',').map((choice, i) => {
+      const val = parseInt(choice.trim());
+      if (isNaN(val)) return null;
+      const isNeg = val < 0;
+      const isZero = val === 0;
+      return (
+        <span
+          key={i}
+          className={`
+          inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-black tracking-wide
+          border transition-all
+          ${isZero
+              ? 'bg-surface2 text-text3 border-border'
+              : isNeg
+                ? 'bg-red/10 text-red border-red/20 shadow-sm shadow-red/10'
+                : 'bg-green/10 text-green border-green/20 shadow-sm shadow-green/10'
+            }
+        `}
+        >
+          <span className="text-[9px]">{isZero ? '◆' : isNeg ? '▼' : '▲'}</span>
+          {val > 0 ? `+${val}` : val}
+        </span>
+      );
+    });
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar relative">
@@ -114,10 +129,12 @@ const SpinControls: React.FC = () => {
               placeholder="-7,-8,-7,+5"
             />
           </div>
-          <div className="flex flex-wrap gap-2 min-h-[28px]">{getSpinChips()}</div>
-          
+          <div className="flex flex-wrap gap-2 min-h-[28px] items-center">
+            {getSpinChips()}
+          </div>
+
           {/* Volume Controls */}
-          <div className="space-y-3 pt-4 border-t border-white/5">
+          {/* <div className="space-y-3 pt-4 border-t border-white/5">
             <label className="text-[10px] text-text3 font-bold uppercase">Sound Effects Volume</label>
             
             <div className="flex items-center gap-3">
@@ -141,7 +158,7 @@ const SpinControls: React.FC = () => {
               />
               <span className="text-[10px] text-brand font-mono w-8">{Math.round((settings.spinVolumeWin ?? 0.5) * 100)}%</span>
             </div>
-          </div>
+          </div> */}
         </div>
       </AccordionSection>
 

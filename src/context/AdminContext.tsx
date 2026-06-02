@@ -135,6 +135,13 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     else localStorage.removeItem('aclass_active_preset_id');
   };
 
+  // ── Fetch gifts independently — public data, no auth required ──
+  useEffect(() => {
+    giftApi.getGifts()
+      .then(res => setGifts(res.data))
+      .catch(e => console.error('Failed to fetch gifts:', e));
+  }, []);
+
   const fetchMyPresets = useCallback(async () => {
     try {
       const res = await presetApi.getMyPresets();
@@ -152,14 +159,14 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const promises: Promise<any>[] = [
         presetApi.getPresets(),
-        announcementApi.getAnnouncements(false), 
+        announcementApi.getAnnouncements(false),
         gameApi.getGames(),
         giftApi.getGifts(),
         presetApi.getMyPresets()
       ];
 
       const results = await Promise.all(promises);
-      
+
       setPresets(results[0].data);
       setAnnouncements(results[1].data);
       setGames(results[2].data);
@@ -174,7 +181,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   useEffect(() => {
     const token = localStorage.getItem('aclass_token');
-    
+
     const triggerHeartbeat = async (status: 'online' | 'offline' = 'online') => {
       const token = localStorage.getItem('aclass_token');
       if (token) {
@@ -194,7 +201,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           } else {
             // Send heartbeat to local API (3001) only
             const res = await authApi.heartbeat(status);
-            
+
             if (res.data && res.data.action === 'forced_logout') {
               console.log('Forced logout triggered by admin');
               localStorage.removeItem('aclass_token');
@@ -214,19 +221,16 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       refreshData();
       triggerHeartbeat('online'); // Trigger immediate heartbeat
     }
-    
+
     // Heartbeat for online status (runs every 30 seconds to avoid server spam)
     const heartbeatInterval = setInterval(() => triggerHeartbeat('online'), 30000);
 
     const handleBeforeUnload = () => {
-      // Try to send offline status before closing
-      // Using navigator.sendBeacon would be better but our API is JSON-based
-      // In Electron, this usually works for quick API calls
       triggerHeartbeat('offline');
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'aclass_token' || e.key === 'aclass_user' || e.key === null) {
         if (localStorage.getItem('aclass_token')) {
@@ -235,7 +239,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
@@ -249,16 +253,16 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const forkPreset = async (id: string) => { await presetApi.forkPreset(id); await refreshData(); };
   const activatePreset = async (userPresetId: string) => { await presetApi.activatePreset(userPresetId); await refreshData(); };
 
-  const addPreset = async (data: any) => { 
-    const res = await presetApi.createPreset(data); 
-    await refreshData(); 
-    return res.data; 
+  const addPreset = async (data: any) => {
+    const res = await presetApi.createPreset(data);
+    await refreshData();
+    return res.data;
   };
-  const updatePreset = async (id: string, data: any) => { 
-    await presetApi.updatePreset(id, data); 
+  const updatePreset = async (id: string, data: any) => {
+    await presetApi.updatePreset(id, data);
     // Usually we update local state or refresh
   };
-  
+
   const deletePreset = async (id: string) => { await presetApi.deletePreset(id); await refreshData(); };
 
   const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/';

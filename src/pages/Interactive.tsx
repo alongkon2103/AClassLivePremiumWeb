@@ -26,6 +26,7 @@ const Interactive: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isDeploying, setIsDeploying] = useState(false);
 
+  
   // Helper to get localized field
   const getLocalized = (obj: any, field: string) => {
     const isEn = i18n.language.startsWith('en');

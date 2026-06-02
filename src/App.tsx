@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { OverlayProvider } from './context/OverlayContext';
 import { EventEngineProvider } from './context/EventEngineContext';
 import { MinecraftProvider } from './context/MinecraftContext';
@@ -17,6 +17,7 @@ import OverlayView from './pages/OverlayView';
 import AppLayout from './components/AppLayout';
 import React from 'react';
 import { Toaster } from 'sonner';
+import UpdateNotification from './components/UpdateNotification';
 
 // Auth Guard Component
 const ProtectedRoute = () => {
@@ -101,6 +102,7 @@ function App() {
           </OverlayProvider>
         </TikTokProvider>
       </AdminProvider>
+      <UpdateNotification /> 
     </ErrorBoundary>
   );
 }

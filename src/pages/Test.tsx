@@ -242,7 +242,7 @@ const Test: React.FC = () => {
                    Win +1
                  </button>
                  <button 
-                   onClick={triggerSpin}
+                   onClick={() => triggerSpin()}
                    className="h-10 rounded-xl bg-brand/10 border border-brand/20 text-brand text-[10px] font-bold uppercase hover:bg-brand/20 transition-all flex items-center justify-center gap-2"
                  >
                    <Dices size={14} /> Spin!

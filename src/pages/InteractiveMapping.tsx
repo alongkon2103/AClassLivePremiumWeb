@@ -24,7 +24,9 @@ import {
 import { interactiveApi } from '../services/api';
 import { useAdmin } from '../context/AdminContext';
 import { toast } from 'sonner';
+import { useTikTok } from '../context/TikTokContext';
 
+// ใน component เพิ่ม
 interface TikTokGiftInfo {
   id: number;
   name: string;
@@ -59,6 +61,8 @@ interface ProductImage {
 
 interface UserOrder {
   id: string;
+  created_at: string;
+  expires_at: string | null;
   products: {
     id: string;
     name_en: string;
@@ -81,6 +85,8 @@ const InteractiveMapping: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { gifts } = useAdmin();
+  const { roomUser } = useTikTok();
+
   const [myOrders, setMyOrders] = useState<UserOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
@@ -89,6 +95,7 @@ const InteractiveMapping: React.FC = () => {
     const stored = localStorage.getItem('aclass_active_order_id');
     return (stored && stored !== 'undefined' && stored !== 'null') ? stored : null;
   });
+  // ...
   const [isActivating, setIsActivating] = useState<string | null>(null);
   const [isInteractiveEnabled, setIsInteractiveEnabled] = useState(
     () => localStorage.getItem('aclass_interactive_enabled') !== 'false'
@@ -100,10 +107,8 @@ const InteractiveMapping: React.FC = () => {
 
   useEffect(() => {
     fetchMyProducts();
-    // Auto-register session if activeOrderId exists
     const stored = localStorage.getItem('aclass_active_order_id');
     const storedActiveId = (stored && stored !== 'undefined' && stored !== 'null') ? stored : null;
-    
     if (storedActiveId) {
       const username = localStorage.getItem('aclass_last_tiktok_user') || 'streamer';
       interactiveApi.registerSession(storedActiveId, username).catch(err => {
@@ -117,25 +122,32 @@ const InteractiveMapping: React.FC = () => {
     window.dispatchEvent(new CustomEvent('interactive-toggle', { detail: isInteractiveEnabled }));
   }, [isInteractiveEnabled]);
 
-  const handleToggleGameActivation = async (orderId: string, tiktokUsername?: string) => {
+
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString(
+      i18n.language.startsWith('th') ? 'th-TH' : 'en-GB',
+      { day: '2-digit', month: 'short', year: 'numeric' }
+    );
+  };
+  const handleToggleGameActivation = async (orderId: string) => {
     if (activeOrderId === orderId) {
-      // Deactivate
       setActiveOrderId(null);
       localStorage.removeItem('aclass_active_order_id');
       toast.info('Game session deactivated');
       return;
     }
-
-    // Activate
     setIsActivating(orderId);
     try {
-      const username = tiktokUsername || localStorage.getItem('aclass_last_tiktok_user') || 'streamer';
+      const username = roomUser || localStorage.getItem('aclass_last_tiktok_user') || 'streamer';
+      console.log('🔥 registerSession called:', { orderId, username, roomUser }); // ← เพิ่มตรงนี้
       await interactiveApi.registerSession(orderId, username);
-      
+      console.log('✅ registerSession success'); // ← และตรงนี้
       setActiveOrderId(orderId);
       localStorage.setItem('aclass_active_order_id', orderId);
       toast.success('Game session activated successfully');
     } catch (err) {
+      console.error('❌ registerSession error:', err); // ← และตรงนี้
       toast.error('Failed to activate game session');
     } finally {
       setIsActivating(null);
@@ -157,19 +169,34 @@ const InteractiveMapping: React.FC = () => {
     setMyOrders(prev =>
       prev.map(order => {
         if (order.id === orderId) {
-          const existingIdx = order.user_function_gifts.findIndex(ufg => ufg.function_id === functionId);
+          let updatedUfgs = [...order.user_function_gifts];
+
+          // ถ้า gift ที่เลือกเป็น 'like' → reset function อื่นที่ใช้ like อยู่ให้เป็น NONE_GIFT
+          if (gift.trigger_type === 'like') {
+            updatedUfgs = updatedUfgs.map(ufg => {
+              if (ufg.function_id !== functionId && ufg.gifts?.trigger_type === 'like') {
+                // หาชื่อ function ที่ถูก reset เพื่อแจ้ง user
+                toast.info(`"${ufg.gifts.name}" unassigned from previous function`);
+                return { ...ufg, gift_id: NONE_GIFT.id, gifts: NONE_GIFT };
+              }
+              return ufg;
+            });
+          }
+
+          const existingIdx = updatedUfgs.findIndex(ufg => ufg.function_id === functionId);
           const newUfg: UserFunctionGift = {
-            id: order.user_function_gifts[existingIdx]?.id || 'new',
+            id: updatedUfgs[existingIdx]?.id || 'new',
             function_id: functionId,
             gift_id: gift.id,
             is_enabled: true,
-            trigger_threshold: order.user_function_gifts[existingIdx]?.trigger_threshold || 1,
+            trigger_threshold: updatedUfgs[existingIdx]?.trigger_threshold || 1,
             gifts: gift,
           };
-          const newUserFunctionGifts = [...order.user_function_gifts];
-          if (existingIdx >= 0) newUserFunctionGifts[existingIdx] = newUfg;
-          else newUserFunctionGifts.push(newUfg);
-          return { ...order, user_function_gifts: newUserFunctionGifts };
+
+          if (existingIdx >= 0) updatedUfgs[existingIdx] = newUfg;
+          else updatedUfgs.push(newUfg);
+
+          return { ...order, user_function_gifts: updatedUfgs };
         }
         return order;
       })
@@ -269,7 +296,6 @@ const InteractiveMapping: React.FC = () => {
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center">
             <Zap size={28} className="text-brand animate-pulse" />
           </div>
-          <div className="absolute inset-0 rounded-2xl border border-brand/30 animate-ping opacity-30" />
         </div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/30">
           {t('interactive_mapping.syncing_data')}
@@ -281,148 +307,36 @@ const InteractiveMapping: React.FC = () => {
   return (
     <>
       <style>{`
-       @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap');
-
-        .im-root * {
-          font-family: 'DM Sans', sans-serif;
-        }
-
-        .im-mono {
-          font-family: 'DM Mono', monospace !important;
-        }
+        .im-root * { font-family: 'DM Sans', sans-serif; }
+        .im-mono { font-family: 'DM Mono', monospace !important; }
 
         .im-card {
           background: rgba(66, 122, 181, 0.04);
           border: 1px solid rgba(66, 122, 181, 0.15);
-          backdrop-filter: blur(12px);
-          transition: border-color 0.25s, background 0.25s;
         }
-
-
 
         .im-fn-row {
           background: rgba(66, 122, 181, 0.03);
           border: 1px solid rgba(66, 122, 181, 0.12);
-          transition: all 0.2s;
+          transition: background 0.15s;
         }
-
-        .im-fn-row:hover {
-          background: rgba(66, 122, 181, 0.06);
-          border-color: rgba(66, 122, 181, 0.25);
-        }
-
-        .im-fn-row.disabled {
-          opacity: 0.38;
-          filter: saturate(0.3);
-        }
+        .im-fn-row:hover { background: rgba(66, 122, 181, 0.06); }
+        .im-fn-row.disabled { opacity: 0.38; filter: saturate(0.3); }
 
         .im-gift-btn {
           background: rgba(66, 122, 181, 0.04);
           border: 1px solid rgba(66, 122, 181, 0.15);
-          transition: all 0.2s;
+          transition: background 0.15s;
         }
-
-        .im-gift-btn:hover {
-          background: rgba(66, 122, 181, 0.08);
-          border-color: #427AB5;
-        }
-
-        .im-toggle-track {
-          transition: background 0.3s;
-        }
-
-        .im-toggle-thumb {
-          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
+        .im-gift-btn:hover { background: rgba(66, 122, 181, 0.1); }
 
         .im-save-btn {
           background: #427AB5;
           border: 1px solid rgba(66, 122, 181, 0.3);
-          transition: all 0.2s;
-        }
-
-        .im-save-btn:hover:not(:disabled) {
-          background: #4a88c9;
-        }
-
-        .im-save-btn:active:not(:disabled) {
-          transform: translateY(0);
-        }
-
-        .im-save-btn.saved {
-          background: #10b981;
-          border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .im-modal-overlay {
-          animation: fadeIn 0.15s ease;
-        }
-
-        .im-modal-panel {
-          animation: slideUp 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px) scale(0.97);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        .im-gift-item {
           transition: background 0.15s;
         }
-
-        .im-gift-item:hover {
-          background: rgba(66, 122, 181, 0.08);
-        }
-
-        .im-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-
-        .im-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .im-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(66, 122, 181, 0.25);
-          border-radius: 99px;
-        }
-
-        .im-power-btn {
-          transition: all 0.2s;
-        }
-
-        .im-power-btn.on {
-          background: rgba(66, 122, 181, 0.12);
-          color: #427AB5;
-          border: 1px solid rgba(66, 122, 181, 0.25);
-        }
-
-        .im-power-btn.on:hover {
-          background: rgba(66, 122, 181, 0.2);
-        }
-
-        .im-power-btn.off {
-          background: rgba(255, 255, 255, 0.03);
-          color: rgba(255, 255, 255, 0.25);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .im-power-btn.off:hover {
-          background: rgba(255, 255, 255, 0.06);
-          color: rgba(255, 255, 255, 0.5);
-        }
+        .im-save-btn:hover:not(:disabled) { background: #4a88c9; }
+        .im-save-btn.saved { background: #10b981; }
 
         .im-badge {
           background: rgba(66, 122, 181, 0.1);
@@ -430,114 +344,51 @@ const InteractiveMapping: React.FC = () => {
           color: #427AB5;
         }
 
-        .im-dot-on {
-          background: #427AB5;
-          animation: pulse-dot 2s infinite;
+        .im-power-btn { transition: background 0.15s; }
+        .im-power-btn.on {
+          background: rgba(66, 122, 181, 0.12);
+          color: #427AB5;
+          border: 1px solid rgba(66, 122, 181, 0.25);
+        }
+        .im-power-btn.off {
+          background: rgba(255,255,255,0.03);
+          color: rgba(255,255,255,0.25);
+          border: 1px solid rgba(255,255,255,0.06);
         }
 
-        .im-dot-off {
-          background: rgba(255, 255, 255, 0.2);
-        }
+        .im-gift-item { transition: background 0.1s; }
+        .im-gift-item:hover { background: rgba(66, 122, 181, 0.08); }
 
-        @keyframes pulse-dot {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.6;
-          }
-        }
-
-        .im-stagger > * {
-          animation: staggerIn 0.4s ease both;
-        }
-
-        .im-stagger > *:nth-child(1) {
-          animation-delay: 0ms;
-        }
-
-        .im-stagger > *:nth-child(2) {
-          animation-delay: 60ms;
-        }
-
-        .im-stagger > *:nth-child(3) {
-          animation-delay: 120ms;
-        }
-
-        .im-stagger > *:nth-child(4) {
-          animation-delay: 180ms;
-        }
-
-        @keyframes staggerIn {
-          from {
-            opacity: 0;
-            transform: translateY(12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        .im-scrollbar::-webkit-scrollbar { width: 4px; }
+        .im-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .im-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(66, 122, 181, 0.25);
+          border-radius: 99px;
         }
       `}</style>
 
       <div className="im-root flex-1 flex flex-col bg-[#07070b] overflow-y-auto im-scrollbar">
-        {/* ── Header ── */}
-        <div className="sticky top-0 z-20 bg-[#07070b]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 sm:px-8 py-4">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-            {/* Title */}
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="w-11 h-11 rounded-2xl im-badge flex items-center justify-center text-violet-400">
-                  <Zap size={22} strokeWidth={2.5} />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-lg font-black text-white tracking-tight leading-none">
-                  {t('interactive_mapping.title')}
-                </h1>
-                <p className="im-mono text-[9px] text-white/30 tracking-[0.2em] uppercase mt-0.5">
-                  {t('interactive_mapping.subtitle')}
-                </p>
-              </div>
-            </div>
 
-            {/* Global Toggle */}
-            {/* <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.07]">
-              <div className="flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${isInteractiveEnabled ? 'im-dot-on' : 'im-dot-off'}`} />
-                <span
-                  className={`im-mono text-[9px] font-bold uppercase tracking-[0.15em] ${isInteractiveEnabled
-                    ? 'text-[var(--brand)]'
-                    : 'text-white/30'
-                    }`}
-                >
-                  {isInteractiveEnabled
-                    ? t('interactive_mapping.store_link_active')
-                    : t('interactive_mapping.store_link_paused')}
-                </span>
-              </div>
-              <button
-                onClick={() => setIsInteractiveEnabled(!isInteractiveEnabled)}
-                className={`relative h-6 w-11 rounded-full transition-colors ${isInteractiveEnabled
-                  ? 'bg-[var(--brand)]'
-                  : 'bg-white/10'
-                  }`}
-              >
-                <span
-                  className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all duration-300 ${isInteractiveEnabled
-                    ? 'left-6'
-                    : 'left-1'
-                    }`}
-                />
-              </button>
-            </div> */}
+        {/* Header */}
+        <div className="sticky top-0 z-20 bg-[#07070b] border-b border-white/[0.06] px-4 sm:px-8 py-4">
+          <div className="max-w-7xl mx-auto flex items-center gap-4">
+            <div className="w-11 h-11 rounded-2xl im-badge flex items-center justify-center">
+              <Zap size={22} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1 className="text-lg font-black text-white tracking-tight leading-none">
+                {t('interactive_mapping.title')}
+              </h1>
+              <p className="im-mono text-[9px] text-white/30 tracking-[0.2em] uppercase mt-0.5">
+                {t('interactive_mapping.subtitle')}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* ── Body ── */}
+        {/* Body */}
         <div className="flex-1 px-4 sm:px-8 py-8 max-w-7xl mx-auto w-full">
           {myOrders.length === 0 ? (
-            /* Empty state */
             <div className="flex-1 flex flex-col items-center justify-center gap-6 py-32 text-center">
               <div className="w-20 h-20 rounded-3xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
                 <ShoppingBag size={32} className="text-white/20" />
@@ -557,69 +408,79 @@ const InteractiveMapping: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 im-stagger">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {myOrders.map(order => {
                 const isSaved = savedOrderId === order.id;
                 const isSavingThis = isSaving === order.id;
+                const isActive = activeOrderId === order.id;
 
                 return (
-                  <div key={order.id} className={`im-card rounded-3xl overflow-hidden flex flex-col transition-all duration-500 ${activeOrderId === order.id ? 'ring-2 ring-brand shadow-[0_0_30px_rgba(139,92,246,0.1)]' : 'opacity-60 grayscale-[0.5]'}`}>
+                  <div
+                    key={order.id}
+                    className={`im-card rounded-3xl overflow-hidden flex flex-col ${isActive ? 'ring-2 ring-brand' : 'opacity-60 grayscale-[0.5]'}`}
+                  >
                     {/* Card Header */}
                     <div className="px-6 pt-6 pb-5 border-b border-white/[0.06]">
                       <div className="flex items-start justify-between gap-4">
-                        {/* Product Info */}
                         <div className="flex items-center gap-4 min-w-0">
-                          <button 
+                          <button
                             onClick={() => handleToggleGameActivation(order.id)}
                             disabled={isActivating === order.id}
-                            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all active:scale-90 ${activeOrderId === order.id ? 'bg-brand text-white ' : 'bg-white/[0.03] border border-white/[0.06] text-white/20 hover:text-white/40'}`}
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${isActive ? 'bg-brand text-white' : 'bg-white/[0.03] border border-white/[0.06] text-white/20 hover:text-white/40'}`}
                           >
-                            {isActivating === order.id ? (
-                               <Loader2 size={20} className="animate-spin" />
-                            ) : (
-                               <Power size={20} strokeWidth={2.5} />
-                            )}
+                            {isActivating === order.id
+                              ? <Loader2 size={20} className="animate-spin" />
+                              : <Power size={20} strokeWidth={2.5} />
+                            }
                           </button>
-                          
                           <div className="min-w-0">
                             <h2 className="text-base font-black text-white truncate leading-tight">
                               {getLocalized(order.products, 'name')}
                             </h2>
+
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              <span className={`im-mono text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 rounded-lg border ${activeOrderId === order.id ? 'bg-brand border-brand text-band' : 'bg-white/5 border-white/10 text-white/30'}`}>
-                                {activeOrderId === order.id ? 'CONNECTED' : 'DISCONNECTED'}
+                              <span className={`im-mono text-[8px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 rounded-lg border ${isActive ? 'bg-brand border-brand text-white' : 'bg-white/5 border-white/10 text-white/30'}`}>
+                                {isActive ? 'CONNECTED' : 'DISCONNECTED'}
                               </span>
                               <span className="im-mono text-[8px] text-white/25 uppercase tracking-[0.15em]">
                                 {t('interactive_mapping.built_in_functions', { count: order.products.product_functions.length })}
                               </span>
                             </div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="im-mono text-[8px] text-white/20 tracking-[0.1em]">
+                                SINCE {formatDate(order.created_at)}
+                              </span>
+                              {order.expires_at && (
+                                <span className={`im-mono text-[8px] px-2 py-0.5 rounded-lg border ${new Date(order.expires_at) < new Date()
+                                  ? 'text-red-400 border-red-500/20 bg-red-500/10'
+                                  : 'text-yellow-400 border-yellow-500/20 bg-yellow-500/10'
+                                  }`}>
+                                  {new Date(order.expires_at) < new Date() ? 'EXPIRED' : 'EXP'} {formatDate(order.expires_at)}
+                                </span>
+                              )}
+                            </div>
+
+
                           </div>
                         </div>
 
-                        {/* Actions */}
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => handleDeleteProduct(order.id)}
-                            className="w-9 h-9 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                            className="w-9 h-9 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-colors"
                           >
                             <Trash2 size={14} />
                           </button>
                           <button
                             onClick={() => saveMappings(order.id)}
-                            disabled={isSavingThis || isSaved || activeOrderId !== order.id}
+                            disabled={isSavingThis || isSaved || !isActive}
                             className={`im-save-btn flex items-center gap-2 px-4 py-2 rounded-xl text-white text-xs font-bold disabled:opacity-30 ${isSaved ? 'saved' : ''}`}
                           >
-                            {isSavingThis ? (
-                              <Loader2 size={13} className="animate-spin" />
-                            ) : isSaved ? (
-                              <Check size={13} />
-                            ) : (
-                              <Save size={13} />
-                            )}
+                            {isSavingThis ? <Loader2 size={13} className="animate-spin" />
+                              : isSaved ? <Check size={13} />
+                                : <Save size={13} />}
                             <span className="hidden sm:inline">
-                              {isSaved
-                                ? t('interactive_mapping.save_success')
-                                : t('interactive_mapping.save_to_cloud')}
+                              {isSaved ? t('interactive_mapping.save_success') : t('interactive_mapping.save_to_cloud')}
                             </span>
                           </button>
                         </div>
@@ -638,15 +499,10 @@ const InteractiveMapping: React.FC = () => {
                             key={fn.id}
                             className={`im-fn-row rounded-2xl p-3 flex items-center justify-between gap-3 ${!isEnabled ? 'disabled' : ''}`}
                           >
-                            {/* Left: Function info */}
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                               {fn.image_url && (
                                 <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] overflow-hidden shrink-0">
-                                  <img
-                                    src={getFullImageUrl(fn.image_url)}
-                                    className="w-full h-full object-cover"
-                                    alt={fn.name}
-                                  />
+                                  <img src={getFullImageUrl(fn.image_url)} className="w-full h-full object-cover" alt={fn.name} />
                                 </div>
                               )}
                               <div className="min-w-0">
@@ -659,50 +515,37 @@ const InteractiveMapping: React.FC = () => {
                               </div>
                             </div>
 
-                            {/* Right: Gift selector + toggle */}
                             <div className="flex items-center gap-2 shrink-0">
-                              {/* Threshold Input for LIKE trigger */}
                               {actualGift?.trigger_type === 'like' && isEnabled && (
-                                <div className="flex items-center gap-2 mr-1 px-2 py-1 bg-white/[0.03] border border-white/[0.08] rounded-xl group/like transition-all hover:border-pink/40">
-                                  <Heart size={12} className="text-pink animate-pulse" fill="currentColor" />
+                                <div className="flex items-center gap-2 mr-1 px-2 py-1 bg-white/[0.03] border border-white/[0.08] rounded-xl">
+                                  <Heart size={12} className="text-pink-400" fill="currentColor" />
                                   <input
                                     type="number"
                                     min="1"
                                     value={mapping?.trigger_threshold || 1}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onChange={(e) =>
-                                      handleUpdateThreshold(
-                                        order.id,
-                                        fn.id,
-                                        parseInt(e.target.value) || 1
-                                      )
-                                    }
+                                    onClick={e => e.stopPropagation()}
+                                    onMouseDown={e => e.stopPropagation()}
+                                    onChange={e => handleUpdateThreshold(order.id, fn.id, parseInt(e.target.value) || 1)}
                                     className="w-16 bg-transparent outline-none im-mono text-xs font-bold text-white text-center"
                                   />
                                 </div>
                               )}
 
-                              {/* Gift button */}
                               <button
                                 onClick={() => {
-                                  if (!isEnabled || activeOrderId !== order.id) return;
+                                  if (!isEnabled || !isActive) return;
                                   setActiveMapping({ orderId: order.id, functionId: fn.id });
+                                  setGiftSearch('');
                                   setIsGiftModalOpen(true);
                                 }}
-                                disabled={!isEnabled || activeOrderId !== order.id}
-                                className={`im-gift-btn flex items-center gap-2.5 px-3 py-2 rounded-xl ${activeOrderId !== order.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                disabled={!isEnabled || !isActive}
+                                className={`im-gift-btn flex items-center gap-2.5 px-3 py-2 rounded-xl ${!isActive ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
                                 <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center overflow-hidden shrink-0">
-                                  {actualGift?.image_url ? (
-                                    <img
-                                      src={getFullImageUrl(actualGift.image_url)}
-                                      className="w-full h-full object-contain p-0.5"
-                                      alt="gift"
-                                    />
-                                  ) : (
-                                    <Gift size={13} className="text-white/30" />
-                                  )}
+                                  {actualGift?.image_url
+                                    ? <img src={getFullImageUrl(actualGift.image_url)} className="w-full h-full object-contain p-0.5" alt="gift" />
+                                    : <Gift size={13} className="text-white/30" />
+                                  }
                                 </div>
                                 <div className="hidden sm:block text-left">
                                   <p className="text-xs font-semibold text-white/80 truncate max-w-[90px]">
@@ -718,14 +561,10 @@ const InteractiveMapping: React.FC = () => {
                                 <ChevronDown size={12} className="text-white/25 hidden sm:block" />
                               </button>
 
-                              {/* Power toggle */}
                               <button
-                                onClick={() => {
-                                  if (activeOrderId !== order.id) return;
-                                  handleToggleFunction(order.id, fn.id);
-                                }}
-                                disabled={activeOrderId !== order.id}
-                                className={`im-power-btn w-9 h-9 rounded-xl flex items-center justify-center ${isEnabled ? 'on' : 'off'} ${activeOrderId !== order.id ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                onClick={() => { if (isActive) handleToggleFunction(order.id, fn.id); }}
+                                disabled={!isActive}
+                                className={`im-power-btn w-9 h-9 rounded-xl flex items-center justify-center ${isEnabled ? 'on' : 'off'} ${!isActive ? 'opacity-30 cursor-not-allowed' : ''}`}
                               >
                                 <Power size={15} strokeWidth={2.5} />
                               </button>
@@ -742,59 +581,52 @@ const InteractiveMapping: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Gift Selection Modal ── */}
+      {/* Gift Selection Modal — simplified, no blur/animation */}
       {isGiftModalOpen && activeMapping && (
         <div
-          className="im-modal-overlay fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-4 sm:pb-0"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
           onClick={e => { if (e.target === e.currentTarget) setIsGiftModalOpen(false); }}
         >
+          <div className="bg-[#111116] border border-white/[0.1] w-full sm:w-[440px] rounded-2xl overflow-hidden flex flex-col max-h-[80vh]">
 
-          <div className="im-modal-panel im-card w-full sm:w-[460px] rounded-3xl overflow-hidden flex flex-col max-h-[85vh]">
             {/* Modal Header */}
-            <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl im-badge flex items-center justify-center text-band">
-                  <Gift size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-white">{t('interactive_mapping.select_gift')}</h3>
-                  <p className="im-mono text-[9px] text-white/25 uppercase tracking-[0.15em] mt-0.5">
-                    {t('interactive_mapping.subtitle')}
-                  </p>
-                </div>
+                <Gift size={18} className="text-[#427AB5]" />
+                <h3 className="text-sm font-bold text-white">{t('interactive_mapping.select_gift')}</h3>
               </div>
               <button
                 onClick={() => setIsGiftModalOpen(false)}
-                className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center text-white/40 hover:text-white"
               >
-                <X size={15} />
+                <X size={14} />
               </button>
             </div>
 
             {/* Search */}
             <div className="px-4 py-3 border-b border-white/[0.06]">
               <div className="relative">
-                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25" />
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
                 <input
                   type="text"
                   placeholder={t('interactive_mapping.search_gifts')}
                   value={giftSearch}
                   onChange={e => setGiftSearch(e.target.value)}
-                  className="w-full bg-white/[0.04] border border-white/[0.07] h-10 rounded-xl pl-9 pr-4 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-band transition-colors"
+                  className="w-full bg-white/[0.05] border border-white/[0.08] h-9 rounded-lg pl-8 pr-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#427AB5]"
                   autoFocus
                 />
               </div>
             </div>
 
             {/* Gift List */}
-            <div className="overflow-y-auto im-scrollbar p-3 flex flex-col gap-1">
+            <div className="overflow-y-auto im-scrollbar p-2 flex flex-col gap-0.5">
               {/* None option */}
               <button
                 onClick={() => handleUpdateGift(activeMapping.orderId, activeMapping.functionId, NONE_GIFT)}
-                className="im-gift-item flex items-center gap-3 p-2.5 rounded-xl w-full text-left border border-dashed border-white/[0.08]"
+                className="im-gift-item flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left border border-dashed border-white/[0.07]"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-white/30 shrink-0">
-                  <Sparkles size={16} />
+                <div className="w-9 h-9 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-white/30 shrink-0">
+                  <Sparkles size={15} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">{t('interactive_mapping.any_action')}</p>
@@ -806,28 +638,27 @@ const InteractiveMapping: React.FC = () => {
                 <button
                   key={gift.id}
                   onClick={() => handleUpdateGift(activeMapping.orderId, activeMapping.functionId, gift)}
-                  className="im-gift-item flex items-center gap-3 p-2.5 rounded-xl w-full text-left"
+                  className="im-gift-item flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
-                    {gift.image_url ? (
-                      <img src={getFullImageUrl(gift.image_url)} alt={gift.name} className="w-full h-full object-contain" />
-                    ) : (
-                      <Gift size={16} className="text-white/25" />
-                    )}
+                  <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
+                    {gift.image_url
+                      ? <img src={getFullImageUrl(gift.image_url)} alt={gift.name} className="w-full h-full object-contain" />
+                      : <Gift size={15} className="text-white/25" />
+                    }
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate">{gift.name}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Gem size={9} className="text-amber-400" fill="currentColor" />
-                      <span className="im-mono text-[10px] text-amber-400">{gift.diamonds}</span>
+                      <span className="im-mono text-[9px] text-amber-400">{gift.diamonds}</span>
                     </div>
                   </div>
                 </button>
               ))}
 
               {filteredGifts.length === 0 && (
-                <div className="py-14 flex flex-col items-center gap-3 text-white/20">
-                  <Gift size={28} />
+                <div className="py-12 flex flex-col items-center gap-3 text-white/20">
+                  <Gift size={26} />
                   <p className="text-sm font-bold">{t('interactive_mapping.no_gifts_found')}</p>
                 </div>
               )}

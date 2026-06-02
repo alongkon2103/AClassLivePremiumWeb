@@ -98,16 +98,14 @@ export const interactiveApi = {
   deployProduct: (data: any) => api.post('/interactive/deploy', data),
   updateMapping: (id: string, mappings: any[]) => api.patch(`/interactive/my-products/${id}/map`, { mappings }),
   deleteProduct: (id: string) => api.delete(`/interactive/my-products/${id}`),
+  
+  // ✅ รวมเป็นอันเดียว — electron ใช้ IPC, browser ใช้ REST
   registerSession: (orderId: string, username: string) => {
-    const token = localStorage.getItem('aclass_token');
     if (window.electron) {
+      const token = localStorage.getItem('aclass_token');
       return window.electron.invoke('interactive:register-session', { orderId, username, token });
     }
-    // Fallback for browser (will still face CORS, but better than nothing)
-    return axios.post(`${import.meta.env.VITE_PRODUCTION_API_URL || 'https://api.aclassstore.com'}/register`, 
-      { orderId, username }, 
-      { headers: { 'Authorization': `Bearer ${token}` } }
-    );
+    return api.post('/interactive/register-session', { orderId, username });
   },
 };
 

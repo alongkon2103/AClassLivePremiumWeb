@@ -23,6 +23,11 @@ const Announcements: React.FC = () => {
     fetchAnnouncements();
   }, []);
 
+  const getFullImageUrl = (path: string | null | undefined): string | undefined => {
+    if (!path) return undefined;
+    if (path.startsWith('http')) return path;
+    return `https://aclassstore.com${path.startsWith('/') ? '' : '/'}${path}`;
+  };
 
   if (loading) {
     return (
@@ -126,7 +131,7 @@ const Announcements: React.FC = () => {
                     {ann.imageUrl && (
                       <div className="w-full h-48 md:h-64 rounded-2xl overflow-hidden border border-white/5 bg-bg/50 relative">
                         <img 
-                          src={`${ann.imageUrl}`} 
+                          src={getFullImageUrl(ann.imageUrl)} 
                           alt={ann.title} 
                           className="w-full h-full object-cover"
                           onError={(e) => {

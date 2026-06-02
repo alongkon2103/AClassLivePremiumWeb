@@ -54,7 +54,7 @@ const Sidebar: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('aclass_token');
     localStorage.removeItem('aclass_user');
-    navigate('/login');
+    window.location.href = '/#/login';
   };
 
   // dot color: เขียว = Live, เหลือง = Wait/Linking, ไม่มี = Offline
@@ -168,9 +168,8 @@ const Sidebar: React.FC = () => {
           {/* Username */}
           <div className="px-3 py-2">
             <p
-              className={`text-[11px] font-mono font-medium truncate ${
-                connected || isConnecting ? 'text-violet-300' : 'text-text3 italic'
-              }`}
+              className={`text-[11px] font-mono font-medium truncate ${connected || isConnecting ? 'text-violet-300' : 'text-text3 italic'
+                }`}
             >
               {connected || isConnecting ? `@${roomUser}` : t('sidebar.not_connected')}
             </p>
@@ -203,17 +202,15 @@ const Sidebar: React.FC = () => {
           <div className="flex flex-1">
             <button
               onClick={() => changeLanguage('th')}
-              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${
-                i18n.language.startsWith('th') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'
-              }`}
+              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${i18n.language.startsWith('th') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'
+                }`}
             >
               TH
             </button>
             <button
               onClick={() => changeLanguage('en')}
-              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${
-                i18n.language.startsWith('en') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'
-              }`}
+              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${i18n.language.startsWith('en') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'
+                }`}
             >
               EN
             </button>

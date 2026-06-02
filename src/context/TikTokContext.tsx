@@ -1,5 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import React, {
+  createContext, useContext, useState, useEffect,
+  ReactNode, useCallback, useRef
+} from 'react';
 import { toast } from 'sonner';
+
+export type AppStatus = 'OFFLINE' | 'WAIT' | 'LIVE';
 
 export interface LogEntry {
   id: number;
@@ -20,6 +25,7 @@ interface TikTokContextType {
   connected: boolean;
   isConnecting: boolean;
   hasFirstEvent: boolean;
+  appStatus: AppStatus;
   roomUser: string;
   setRoomUser: (user: string) => void;
   giftLogs: LogEntry[];
@@ -38,6 +44,7 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [connected, setConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasFirstEvent, setHasFirstEvent] = useState(false);
+  const [appStatus, setAppStatus] = useState<AppStatus>('OFFLINE');
   const [roomUser, setRoomUser] = useState(() => {
     const saved = localStorage.getItem('aclass_last_tiktok_user');
     if (saved) return saved;
@@ -45,19 +52,19 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const userStr = localStorage.getItem('aclass_user');
       const user = userStr ? JSON.parse(userStr) : null;
       return user?.tiktok_username || '';
-    } catch (e) {
-      return '';
-    }
+    } catch { return ''; }
   });
+
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectedRef = useRef(false);
+
   const [giftLogs, setGiftLogs] = useState<LogEntry[]>([]);
   const [commentLogs, setCommentLogs] = useState<LogEntry[]>([]);
   const [likeLogs, setLikeLogs] = useState<LogEntry[]>([]);
   const [followLogs, setFollowLogs] = useState<LogEntry[]>([]);
   const [systemLogs, setSystemLogs] = useState<LogEntry[]>([]);
   const [stats, setStats] = useState<RoomStats>({ viewerCount: 0, likeCount: 0 });
-
-  const connectedRef = useRef(connected);
+  const isConnectingRef = useRef(false);
   useEffect(() => { connectedRef.current = connected; }, [connected]);
 
   const clearLogs = useCallback(() => {
@@ -70,22 +77,31 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const addSystemLog = useCallback((message: string) => {
-    const newEntry: LogEntry = {
-      id: Date.now(),
+    setSystemLogs(prev => [...prev.slice(-50), {
+      id: Date.now() + Math.random(),
       time: new Date().toLocaleTimeString(),
       user: 'SYSTEM',
       message,
-      type: 'system'
-    };
-    setSystemLogs(prev => [...prev.slice(-50), newEntry]);
+      type: 'system' as const,
+    }]);
   }, []);
+
+  const addSystemLogRef = useRef(addSystemLog);
+  const clearLogsRef = useRef(clearLogs);
+  useEffect(() => { addSystemLogRef.current = addSystemLog; }, [addSystemLog]);
+  useEffect(() => { clearLogsRef.current = clearLogs; }, [clearLogs]);
 
   const connect = async (username: string) => {
     if (!window.electron) return;
+    if (isConnectingRef.current) return; // ✅ กัน double call
+    isConnectingRef.current = true;
 
     setIsConnecting(true);
     setConnected(false);
     setHasFirstEvent(false);
+    setAppStatus('WAIT');
+    connectedRef.current = false;
+
     const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
     setRoomUser(cleanUsername);
     localStorage.setItem('aclass_last_tiktok_user', cleanUsername);
@@ -95,31 +111,33 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     try {
       const storedActiveId = localStorage.getItem('aclass_active_order_id');
-      const activeOrderId = (storedActiveId && storedActiveId !== 'undefined' && storedActiveId !== 'null') ? storedActiveId : null;
+      const activeOrderId = (storedActiveId && storedActiveId !== 'undefined' && storedActiveId !== 'null')
+        ? storedActiveId : null;
 
       if (!activeOrderId) {
-        addSystemLog('❌ Please activate a game (Power ON) in Interactive Mapping before connecting to TikTok.');
+        addSystemLog('❌ Please activate a game (Power ON) before connecting.');
         toast.error('Please activate a game before connecting.');
         setIsConnecting(false);
+        setAppStatus('OFFLINE');
         return;
       }
 
-      let session = null;
+      let session: any = null;
       const savedSession = localStorage.getItem('aclass_tiktok_session');
       if (savedSession) {
-        try { session = JSON.parse(savedSession); } catch (e) { }
+        try { session = JSON.parse(savedSession); } catch { }
       }
 
-      if (!session || !session.sessionid || !session.idc) {
-        addSystemLog('No login session found. Opening TikTok login window...');
+      if (!session?.sessionid || !session?.idc) {
+        addSystemLog('No session found. Opening TikTok login window...');
         session = await window.electron.invoke('tiktok:login');
-
-        if (session && session.sessionid) {
+        if (session?.sessionid) {
           addSystemLog('TikTok login successful ✅');
           localStorage.setItem('aclass_tiktok_session', JSON.stringify(session));
         } else {
           addSystemLog('Login cancelled ❌');
           setIsConnecting(false);
+          setAppStatus('OFFLINE');
           return;
         }
       }
@@ -130,153 +148,152 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         username: cleanUsername,
         sessionId: session.sessionid,
         idc: session.idc,
-        token: token,
+        token,
         orderId: activeOrderId,
       });
 
-      const timeout = setTimeout(() => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
         if (!connectedRef.current) {
+          isConnectingRef.current = false; // ✅
           setIsConnecting(false);
-          addSystemLog('Connection timed out ❌');
+          setAppStatus('OFFLINE');
+          addSystemLogRef.current('Connection timed out ❌');
         }
-      }, 30000);
-
-      timeoutRef.current = timeout;
-
+      }, 60000);
     } catch (err: any) {
-      addSystemLog(`Error: ${err.message}`);
+      isConnectingRef.current = false; // ✅
+      addSystemLog(`Error: ${err?.message || String(err)}`);
       setIsConnecting(false);
+      setAppStatus('OFFLINE');
     }
   };
 
   const disconnect = () => {
     if (!window.electron) return;
+    if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
     setHasFirstEvent(false);
+    setAppStatus('OFFLINE');
     addSystemLog('Disconnecting...');
     window.electron.send('tiktok:disconnect');
   };
 
-  // ─── FIX: Register listeners only once on mount, using stable refs ───────────
-  // addSystemLog and clearLogs are useCallback with [] so they are stable,
-  // but we still use refs to be safe and avoid any potential re-registration.
-  const addSystemLogRef = useRef(addSystemLog);
-  const clearLogsRef = useRef(clearLogs);
-  useEffect(() => { addSystemLogRef.current = addSystemLog; }, [addSystemLog]);
-  useEffect(() => { clearLogsRef.current = clearLogs; }, [clearLogs]);
-
+  // ─── Listeners — mount once ───────────────────────────────────────────────
   useEffect(() => {
     if (!window.electron) return;
 
-    const removeStatusListener = window.electron.on('tiktok:status', (status: any) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+    const removeStatus = window.electron.on('tiktok:status', (data: any) => {
+      isConnectingRef.current = false;
+      if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+
       const wasConnected = connectedRef.current;
-      setConnected(status.connected);
+      setConnected(data.connected);
+      connectedRef.current = data.connected;
       setIsConnecting(false);
+      setAppStatus(data.state ?? (data.connected ? 'LIVE' : 'OFFLINE'));
 
-      if (status.connected) {
-        addSystemLogRef.current(`Connected! (Room ID: ${status.roomId})`);
+      addSystemLogRef.current(data.message || (data.connected ? 'Connected' : 'Disconnected'));
+
+      if (data.connected) {
+        const match = data.message?.match(/@([a-zA-Z0-9._-]+)/);
+        if (match) setRoomUser(match[1]);
       } else {
-        if (wasConnected) {
-          clearLogsRef.current();
-          setHasFirstEvent(false);
-        }
-
-        if (status.error) {
-          addSystemLogRef.current(`Connection failed: ${status.error}`);
-          if (
-            status.error.includes('expired') ||
-            status.error.includes('cookie') ||
-            status.error.includes('sid')
-          ) {
-            localStorage.removeItem('aclass_tiktok_session');
-            addSystemLogRef.current('TikTok session may have expired. Please reconnect.');
-          }
-        } else if (status.info) {
-          addSystemLogRef.current(status.info);
-        } else {
-          addSystemLogRef.current('Disconnected.');
+        if (wasConnected) { clearLogsRef.current(); setHasFirstEvent(false); }
+        if (data.message?.includes('expired') || data.message?.includes('cookie') || data.message?.includes('sid')) {
+          localStorage.removeItem('aclass_tiktok_session');
+          addSystemLogRef.current('Session may have expired. Please reconnect.');
         }
       }
     });
 
-    const removeStatsListener = window.electron.on('tiktok:stats', (newStats: any) => {
+    const removeStats = window.electron.on('tiktok:stats', (data: any) => {
       setStats(prev => ({
-        viewerCount: newStats.viewerCount ?? prev.viewerCount,
-        likeCount: Math.max(prev.likeCount, newStats.likeCount ?? 0),
+        viewerCount: data.viewerCount ?? prev.viewerCount,
+        likeCount: data.likeCount !== undefined
+          ? Math.max(prev.likeCount, data.likeCount) : prev.likeCount,
       }));
     });
 
-    const removeEventListener = window.electron.on('tiktok:event', (event: any) => {
-      const now = Date.now();
-      const newEntry: LogEntry = {
-        id: now,
-        time: new Date().toLocaleTimeString(),
-        user: event.data.uniqueId,
-        // Normalise type: treat 'chat' as 'comment' for log consistency
-        type: (event.type === 'chat' ? 'comment' : event.type) as LogEntry['type'],
-        message: event.data.comment || '',
-        giftName: event.data.giftName,
-        count: event.data.repeatCount || event.data.likeCount || 1,
-      };
-
+    const removeGift = window.electron.on('tiktok:gift', (data: any) => {
       setHasFirstEvent(true);
-
-      if (event.type === 'comment' || event.type === 'chat') {
-        setCommentLogs(prev => [...prev.slice(-100), newEntry]);
-      } else if (event.type === 'gift') {
-        setGiftLogs(prev => {
-          // ─── DEDUPLICATION LOGIC ───
-          // Check if we have a very recent entry for the same user and gift
-          const lastIdx = prev.findLastIndex(l => 
-            l.user === event.data.uniqueId && 
-            l.giftName === event.data.giftName
-          );
-          
-          if (lastIdx >= 0) {
-            const lastLog = prev[lastIdx];
-            // If it's within 3 seconds, update the existing entry
-            if (now - lastLog.id < 3000) {
-              const updated = [...prev];
-              updated[lastIdx] = {
-                ...lastLog,
-                count: Math.max(lastLog.count || 1, event.data.repeatCount || 1)
-              };
-              return updated;
-            }
+      setAppStatus('LIVE');
+      const now = Date.now();
+      const user = data.nickname || data.username;
+      const entry: LogEntry = {
+        id: now + Math.random(),
+        time: new Date().toLocaleTimeString(),
+        user,
+        type: 'gift',
+        message: '',
+        giftName: data.giftName,
+        count: data.repeatCount || 1,
+      };
+      setGiftLogs(prev => {
+        for (let i = prev.length - 1; i >= 0; i--) {
+          const last = prev[i];
+          if (last.user === user && last.giftName === data.giftName && now - last.id < 3000) {
+            const updated = [...prev];
+            updated[i] = { ...last, count: Math.max(last.count || 1, data.repeatCount || 1) };
+            return updated;
           }
-          return [...prev.slice(-100), newEntry];
-        });
-      } else if (event.type === 'like') {
-        setLikeLogs(prev => [...prev.slice(-100), newEntry]);
-      } else if (
-        event.type === 'follow' ||
-        (event.type === 'social' && event.data.displayType?.includes('follow'))
-      ) {
-        setFollowLogs(prev => [...prev.slice(-100), newEntry]);
+        }
+        return [...prev.slice(-100), entry];
+      });
+    });
+
+    const removeChat = window.electron.on('tiktok:chat', (data: any) => {
+      setHasFirstEvent(true);
+      setAppStatus('LIVE');
+      setCommentLogs(prev => [...prev.slice(-100), {
+        id: Date.now() + Math.random(),
+        time: new Date().toLocaleTimeString(),
+        user: data.nickname || data.username,
+        type: 'comment' as const,
+        message: data.comment || '',
+      }]);
+    });
+
+    const removeLike = window.electron.on('tiktok:like', (data: any) => {
+      setHasFirstEvent(true);
+      setAppStatus('LIVE');
+      setLikeLogs(prev => [...prev.slice(-100), {
+        id: Date.now() + Math.random(),
+        time: new Date().toLocaleTimeString(),
+        user: data.nickname || data.username,
+        type: 'like' as const,
+        message: '',
+        count: data.likeCount || 1,
+      }]);
+      if (data.totalLikeCount !== undefined) {
+        setStats(prev => ({ ...prev, likeCount: Math.max(prev.likeCount, data.totalLikeCount) }));
       }
     });
 
-    // Cleanup: remove all listeners when this effect tears down (component unmount only,
-    // since the dep array is empty — no accidental re-registration mid-session)
-    return () => {
-      if (removeStatusListener) removeStatusListener();
-      if (removeStatsListener) removeStatsListener();
-      if (removeEventListener) removeEventListener();
-    };
+    const removeFollow = window.electron.on('tiktok:follow', (data: any) => {
+      setHasFirstEvent(true);
+      setAppStatus('LIVE');
+      setFollowLogs(prev => [...prev.slice(-100), {
+        id: Date.now() + Math.random(),
+        time: new Date().toLocaleTimeString(),
+        user: data.nickname || data.username,
+        type: 'follow' as const,
+        message: 'followed',
+      }]);
+    });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ← empty array: register once, clean up on unmount only
+    return () => {
+      removeStatus?.(); removeStats?.();
+      removeGift?.(); removeChat?.();
+      removeLike?.(); removeFollow?.();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <TikTokContext.Provider value={{
-      connected, isConnecting, hasFirstEvent,
+      connected, isConnecting, hasFirstEvent, appStatus,
       roomUser, setRoomUser,
       giftLogs, commentLogs, likeLogs, followLogs, systemLogs,
-      stats,
-      connect, disconnect
+      stats, connect, disconnect,
     }}>
       {children}
     </TikTokContext.Provider>
@@ -284,7 +301,7 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 };
 
 export const useTikTok = () => {
-  const context = useContext(TikTokContext);
-  if (!context) throw new Error('useTikTok must be used within TikTokProvider');
-  return context;
+  const ctx = useContext(TikTokContext);
+  if (!ctx) throw new Error('useTikTok must be used within TikTokProvider');
+  return ctx;
 };
