@@ -198,7 +198,6 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const match = data.message?.match(/@([a-zA-Z0-9._-]+)/);
         if (match) setRoomUser(match[1]);
       } else {
-        if (wasConnected) { clearLogsRef.current(); setHasFirstEvent(false); }
         if (data.message?.includes('expired') || data.message?.includes('cookie') || data.message?.includes('sid')) {
           localStorage.removeItem('aclass_tiktok_session');
           addSystemLogRef.current('Session may have expired. Please reconnect.');
@@ -215,6 +214,7 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     const removeGift = window.electron.on('tiktok:gift', (data: any) => {
+      addSystemLogRef.current(`🎁 Gift received: ${data.giftName}`);
       setHasFirstEvent(true);
       setAppStatus('LIVE');
       const now = Date.now();
@@ -242,6 +242,7 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     const removeChat = window.electron.on('tiktok:chat', (data: any) => {
+      // addSystemLogRef.current(`💬 Chat received from @${data.nickname || data.username}`);
       setHasFirstEvent(true);
       setAppStatus('LIVE');
       setCommentLogs(prev => [...prev.slice(-100), {
