@@ -57,16 +57,14 @@ const Sidebar: React.FC = () => {
     window.location.href = '/#/login';
   };
 
-  // dot color: เขียว = Live, เหลือง = Wait/Linking, ไม่มี = Offline
   const dotColor = connected && hasFirstEvent
-    ? 'bg-emerald-400'
+    ? 'bg-green'
     : connected && !hasFirstEvent
-      ? 'bg-yellow-400'
+      ? 'bg-amber'
       : isConnecting
-        ? 'bg-yellow-400'
+        ? 'bg-amber'
         : null;
 
-  // status label
   const statusLabel = connected && hasFirstEvent
     ? t('sidebar.connected')
     : connected && !hasFirstEvent
@@ -75,30 +73,32 @@ const Sidebar: React.FC = () => {
         ? t('sidebar.linking')
         : t('sidebar.offline');
 
-  // status icon
   const statusIcon = connected && hasFirstEvent
-    ? <Radio size={11} className="text-violet-400 animate-pulse" />
+    ? <Radio size={11} style={{ color: 'var(--brand)' }} className="animate-pulse" />
     : connected && !hasFirstEvent
-      ? <Loader2 size={11} className="text-yellow-400 animate-spin" />
+      ? <Loader2 size={11} className="text-amber animate-spin" />
       : isConnecting
-        ? <Loader2 size={11} className="text-violet-400/60 animate-spin" />
+        ? <Loader2 size={11} className="text-text3 animate-spin" />
         : <WifiOff size={11} className="text-text3" />;
 
   const statusTextColor = connected && hasFirstEvent
-    ? 'text-violet-400'
+    ? ''
     : connected && !hasFirstEvent
-      ? 'text-yellow-400'
+      ? 'text-amber'
       : isConnecting
-        ? 'text-violet-400/60'
+        ? 'text-text3'
         : 'text-text3';
 
-  const cardBorder = connected && hasFirstEvent
-    ? 'border-violet-500/20 bg-violet-500/5'
-    : connected && !hasFirstEvent
-      ? 'border-yellow-400/20 bg-yellow-400/5'
-      : isConnecting
-        ? 'border-violet-400/15 bg-violet-400/5'
-        : 'border-border bg-surface2';
+  const cardStyle = connected && hasFirstEvent ? {
+    borderColor: 'color-mix(in srgb, var(--brand) 20%, transparent)',
+    background: 'color-mix(in srgb, var(--brand) 5%, transparent)',
+  } : connected && !hasFirstEvent ? {
+    borderColor: 'color-mix(in srgb, var(--amber) 20%, transparent)',
+    background: 'color-mix(in srgb, var(--amber) 5%, transparent)',
+  } : isConnecting ? {
+    borderColor: 'color-mix(in srgb, var(--brand) 15%, transparent)',
+    background: 'color-mix(in srgb, var(--brand) 5%, transparent)',
+  } : {};
 
   return (
     <div className="w-[200px] h-full bg-surface border-r border-border flex flex-col">
@@ -139,7 +139,6 @@ const Sidebar: React.FC = () => {
           >
             {item.icon}
             <span className="text-sm">{item.name}</span>
-            {/* dot สีตาม status ที่ Dashboard */}
             {item.path === '/dashboard' && dotColor && (
               <span className={`ml-auto w-1.5 h-1.5 rounded-full animate-pulse ${dotColor}`} />
             )}
@@ -153,11 +152,17 @@ const Sidebar: React.FC = () => {
           {t('sidebar.tiktok_live')}
         </p>
 
-        <div className={`rounded-xl border overflow-hidden transition-all ${cardBorder}`}>
+        <div
+          className="rounded-xl border overflow-hidden transition-all"
+          style={cardStyle}
+        >
           {/* Status header */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-white/5">
+          <div className="flex items-center gap-2 px-3 py-2 ">
             {statusIcon}
-            <span className={`text-[9px] font-black uppercase tracking-widest ${statusTextColor}`}>
+            <span
+              className={`text-[9px] font-black uppercase tracking-widest ${statusTextColor}`}
+              style={connected && hasFirstEvent ? { color: 'var(--brand)' } : {}}
+            >
               {statusLabel}
             </span>
             {dotColor && (
@@ -168,8 +173,8 @@ const Sidebar: React.FC = () => {
           {/* Username */}
           <div className="px-3 py-2">
             <p
-              className={`text-[11px] font-mono font-medium truncate ${connected || isConnecting ? 'text-violet-300' : 'text-text3 italic'
-                }`}
+              className={`text-[11px] font-mono font-medium truncate ${connected || isConnecting ? '' : 'text-text3 italic'}`}
+              style={connected || isConnecting ? { color: 'var(--brand)' } : {}}
             >
               {connected || isConnecting ? `@${roomUser}` : t('sidebar.not_connected')}
             </p>
@@ -182,12 +187,12 @@ const Sidebar: React.FC = () => {
                 onClick={disconnect}
                 className="w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95"
                 style={{
-                  color: 'rgba(167,139,250,0.7)',
-                  background: 'rgba(139,92,246,0.08)',
-                  border: '1px solid rgba(139,92,246,0.15)',
+                  color: 'var(--brand)',
+                  background: 'color-mix(in srgb, var(--brand) 8%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--brand) 15%, transparent)',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.15)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.08)')}
+                onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--brand) 15%, transparent)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--brand) 8%, transparent)')}
               >
                 {t('sidebar.disconnect')}
               </button>
@@ -202,15 +207,13 @@ const Sidebar: React.FC = () => {
           <div className="flex flex-1">
             <button
               onClick={() => changeLanguage('th')}
-              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${i18n.language.startsWith('th') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'
-                }`}
+              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${i18n.language.startsWith('th') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'}`}
             >
               TH
             </button>
             <button
               onClick={() => changeLanguage('en')}
-              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${i18n.language.startsWith('en') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'
-                }`}
+              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${i18n.language.startsWith('en') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'}`}
             >
               EN
             </button>

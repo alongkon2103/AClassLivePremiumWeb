@@ -172,6 +172,8 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const disconnect = () => {
     if (!window.electron) return;
     if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+    connectedRef.current = false; // ← เพิ่ม
+    setConnected(false);
     setHasFirstEvent(false);
     setAppStatus('OFFLINE');
     addSystemLog('Disconnecting...');
@@ -214,6 +216,7 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     const removeGift = window.electron.on('tiktok:gift', (data: any) => {
+      if (!connectedRef.current) return;
       addSystemLogRef.current(`🎁 Gift received: ${data.giftName}`);
       setHasFirstEvent(true);
       setAppStatus('LIVE');
@@ -242,6 +245,7 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     const removeChat = window.electron.on('tiktok:chat', (data: any) => {
+      if (!connectedRef.current) return;
       // addSystemLogRef.current(`💬 Chat received from @${data.nickname || data.username}`);
       setHasFirstEvent(true);
       setAppStatus('LIVE');
@@ -255,6 +259,7 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     const removeLike = window.electron.on('tiktok:like', (data: any) => {
+      if (!connectedRef.current) return;
       setHasFirstEvent(true);
       setAppStatus('LIVE');
       setLikeLogs(prev => [...prev.slice(-100), {
@@ -271,6 +276,7 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     const removeFollow = window.electron.on('tiktok:follow', (data: any) => {
+      if (!connectedRef.current) return;
       setHasFirstEvent(true);
       setAppStatus('LIVE');
       setFollowLogs(prev => [...prev.slice(-100), {

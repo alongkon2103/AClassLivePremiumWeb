@@ -142,7 +142,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     const win = iframeRef.current?.contentWindow;
     if (!win) return;
     win.postMessage({ type: 'UPDATE_SETTINGS', settings }, '*');
-  }, [settings, isEnabled, isReady, isSpin]);
+  }, [settings, isEnabled, isReady, isSpin]); // ← ทุกครั้งที่ settings เปลี่ยน → postMessage
 
   // ✅ onLoad — win overlay เท่านั้น, spin ไม่ต้องทำอะไร
   const handleLoad = () => {

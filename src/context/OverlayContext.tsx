@@ -119,7 +119,15 @@ export const OverlayProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!window.electron) return;
 
     const unbindUpdate = window.electron.on('settings:update', (newSettings: any) => {
-      setSettings(prev => ({ ...prev, ...newSettings }));
+      setSettings(prev => {
+        // ถ้า winCount เหมือนเดิม ไม่ต้อง update
+        if (prev.winCount === newSettings.winCount &&
+          prev.winEnabled === newSettings.winEnabled &&
+          prev.spinEnabled === newSettings.spinEnabled) {
+          return prev; // ← React skip re-render
+        }
+        return { ...prev, ...newSettings };
+      });
     });
 
     const unbindHotkeySpin = window.electron.on('hotkey:spin-trigger', () => {
@@ -134,20 +142,18 @@ export const OverlayProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (val === 'reset') {
           newCount = 0;
         } else {
-          // Parse value as number (it might be a string from the UI)
           const numVal = typeof val === 'string' ? parseInt(val) : val;
           if (isNaN(numVal as number)) return prev;
-
           newCount = prev.allowNegative ? prev.winCount + (numVal as number) : Math.max(0, prev.winCount + (numVal as number));
         }
 
         const next = { ...prev, winCount: newCount };
 
-        // Save back so other windows see the count change
-        window.electron.send('settings:save', next);
-        // Explicitly trigger storage event for local tabs
-        localStorage.setItem('aclass_overlay_settings', JSON.stringify(next));
-        window.dispatchEvent(new Event('storage'));
+        // debounce save เพื่อไม่ให้วนกลับมา trigger settings:update ถี่เกินไป
+        clearTimeout((window as any)._saveTimer);
+        (window as any)._saveTimer = setTimeout(() => {
+          window.electron.send('settings:save', next);
+        }, 200);
 
         return next;
       });
