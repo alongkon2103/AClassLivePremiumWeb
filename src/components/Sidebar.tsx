@@ -17,8 +17,18 @@ import {
   Zap,
   Megaphone,
   Languages,
+  ChevronDown,
+  Check,
+  RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
 import { useTikTok } from '../context/TikTokContext';
+import {
+  SUPPORTED_LANGUAGES,
+  LANGUAGE_META,
+  normalizeLocale,
+  type SupportedLanguage,
+} from '../i18n';
 
 const TikTokIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -31,9 +41,27 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { connected, isConnecting, hasFirstEvent, roomUser, giftLogs, likeLogs, disconnect } = useTikTok();
 
-  const changeLanguage = (lng: string) => {
+  const changeLanguage = (lng: SupportedLanguage) => {
     i18n.changeLanguage(lng);
   };
+
+  const [langOpen, setLangOpen] = React.useState(false);
+  const langRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!langOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [langOpen]);
+
+  const currentLang: SupportedLanguage =
+    normalizeLocale(i18n.language) ?? 'en';
+  const currentMeta = LANGUAGE_META[currentLang];
 
   let user = null;
   try {
@@ -55,6 +83,25 @@ const Sidebar: React.FC = () => {
     localStorage.removeItem('aclass_token');
     localStorage.removeItem('aclass_user');
     window.location.href = '/#/login';
+  };
+
+  const [restartOpen, setRestartOpen] = React.useState(false);
+  const [restarting, setRestarting] = React.useState(false);
+
+  const handleRestart = async () => {
+    if (restarting) return;
+    setRestarting(true);
+    try {
+      const electron = (window as any)?.electron;
+      if (electron?.invoke) {
+        await electron.invoke('app:restart');
+      } else {
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('[Restart] Failed:', err);
+      setRestarting(false);
+    }
   };
 
   const dotColor = connected && hasFirstEvent
@@ -203,21 +250,58 @@ const Sidebar: React.FC = () => {
 
       {/* ── Language Switcher ─────────────────────────────── */}
       <div className="px-4 pb-4">
-        <div className="flex items-center gap-2 p-1.5 bg-bg/50 border border-border rounded-xl">
-          <div className="flex flex-1">
-            <button
-              onClick={() => changeLanguage('th')}
-              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${i18n.language.startsWith('th') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'}`}
+        <p className="text-[9px] font-bold uppercase tracking-widest text-text3 px-1 mb-2 flex items-center gap-1.5">
+          <Languages size={11} />
+          {t('sidebar.language')}
+        </p>
+        <div className="relative" ref={langRef}>
+          <button
+            type="button"
+            onClick={() => setLangOpen(o => !o)}
+            className="w-full flex items-center gap-2 px-3 py-2 bg-bg/50 border border-border rounded-xl text-left text-xs font-bold hover:border-brand/40 transition-all"
+            aria-haspopup="listbox"
+            aria-expanded={langOpen}
+          >
+            <span className="text-base leading-none">{currentMeta.flag}</span>
+            <span className="flex-1 truncate">{currentMeta.label}</span>
+            <ChevronDown
+              size={14}
+              className={`text-text3 transition-transform ${langOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {langOpen && (
+            <div
+              role="listbox"
+              className="absolute bottom-full left-0 right-0 mb-1 bg-surface2 border border-border rounded-xl shadow-2xl overflow-hidden z-50"
             >
-              TH
-            </button>
-            <button
-              onClick={() => changeLanguage('en')}
-              className={`flex-1 text-[10px] font-black py-1 rounded-md transition-all ${i18n.language.startsWith('en') ? 'bg-brand text-white shadow-lg' : 'text-text3 hover:text-text2'}`}
-            >
-              EN
-            </button>
-          </div>
+              {SUPPORTED_LANGUAGES.map(code => {
+                const meta = LANGUAGE_META[code];
+                const active = code === currentLang;
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => {
+                      changeLanguage(code);
+                      setLangOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-left transition-all ${
+                      active
+                        ? 'bg-brand/10 text-brand'
+                        : 'text-text2 hover:bg-surface hover:text-text'
+                    }`}
+                  >
+                    <span className="text-base leading-none">{meta.flag}</span>
+                    <span className="flex-1 truncate">{meta.label}</span>
+                    {active && <Check size={12} />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -239,6 +323,13 @@ const Sidebar: React.FC = () => {
 
         <div className="flex flex-col gap-1">
           <button
+            onClick={() => setRestartOpen(true)}
+            className="flex items-center gap-3 px-3 py-2 text-sm text-text2 hover:bg-surface2 hover:text-text rounded-lg transition-all w-full"
+          >
+            <RotateCcw size={18} />
+            {t('sidebar.restart')}
+          </button>
+          <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2 text-sm text-red hover:bg-red/10 rounded-lg transition-all w-full"
           >
@@ -247,6 +338,61 @@ const Sidebar: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* ── Restart Confirmation Modal ────────────────────── */}
+      {restartOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in"
+          onClick={() => !restarting && setRestartOpen(false)}
+        >
+          <div
+            className="w-[90%] max-w-sm bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-amber/10 flex items-center justify-center">
+                  <AlertTriangle size={20} className="text-amber" />
+                </div>
+                <h3 className="text-base font-bold text-text">
+                  {t('sidebar.restart_title')}
+                </h3>
+              </div>
+              <p className="text-sm text-text2 leading-relaxed">
+                {t('sidebar.restart_message')}
+              </p>
+            </div>
+            <div className="flex gap-2 p-4 border-t border-border bg-bg/30">
+              <button
+                onClick={() => setRestartOpen(false)}
+                disabled={restarting}
+                className="flex-1 py-2 px-3 rounded-lg text-sm font-semibold text-text2 hover:bg-surface2 transition-all disabled:opacity-50"
+              >
+                {t('sidebar.restart_cancel')}
+              </button>
+              <button
+                onClick={handleRestart}
+                disabled={restarting}
+                className="flex-1 py-2 px-3 rounded-lg text-sm font-bold bg-brand text-white hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {restarting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    {t('sidebar.linking')}
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={14} />
+                    {t('sidebar.restart_confirm')}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
