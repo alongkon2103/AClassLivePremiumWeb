@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   ShoppingBag,
   ExternalLink,
@@ -20,6 +21,7 @@ import { toast } from 'sonner';
 
 const Interactive: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -57,6 +59,7 @@ const Interactive: React.FC = () => {
       await interactiveApi.deployProduct({ productId: product.id });
       toast.success(`${getLocalized(product, 'name')} deployed successfully!`);
       setSelectedProduct(null);
+      navigate('/interactive-mapping');
     } catch (err: any) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Failed to deploy product');

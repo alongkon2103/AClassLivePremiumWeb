@@ -36,13 +36,16 @@ interface TikTokGiftInfo {
 }
 
 interface UserFunctionGift {
-  id: string;
+  id: string; // real DB uuid, or "tmp_…" for unsaved rows added locally
   function_id: string;
   gift_id: number;
   is_enabled: boolean;
   trigger_threshold?: number | null;
   gifts: TikTokGiftInfo;
 }
+
+const newTempId = () =>
+  `tmp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
 interface ProductFunction {
   id: string;
@@ -102,7 +105,11 @@ const InteractiveMapping: React.FC = () => {
   );
 
   const [isGiftModalOpen, setIsGiftModalOpen] = useState(false);
-  const [activeMapping, setActiveMapping] = useState<{ orderId: string; functionId: string } | null>(null);
+  // mappingId === null → adding a brand-new mapping row for this function
+  // mappingId === string → editing the gift of an existing row
+  const [activeMapping, setActiveMapping] = useState<
+    { orderId: string; functionId: string; mappingId: string | null } | null
+  >(null);
   const [giftSearch, setGiftSearch] = useState('');
 
   useEffect(() => {
@@ -157,7 +164,14 @@ const InteractiveMapping: React.FC = () => {
   const fetchMyProducts = async () => {
     try {
       const res = await interactiveApi.getMyProducts();
-      setMyOrders(res.data);
+      // Hide orders whose subscription has already expired — keep ones with no
+      // expires_at (lifetime) or whose expires_at is still in the future.
+      const now = Date.now();
+      const active = (res.data || []).filter((o: UserOrder) => {
+        if (!o.expires_at) return true;
+        return new Date(o.expires_at).getTime() > now;
+      });
+      setMyOrders(active);
     } catch (err) {
       toast.error('Failed to load your products');
     } finally {
@@ -165,75 +179,112 @@ const InteractiveMapping: React.FC = () => {
     }
   };
 
-  const handleUpdateGift = (orderId: string, functionId: string, gift: TikTokGiftInfo) => {
+  // Picking a gift from the modal: either creates a new mapping row for the function
+  // (when activeMapping.mappingId is null) or replaces the gift on an existing row.
+  // Duplicate gifts are allowed inside the same function. New rows default to standby
+  // unless the function has no active row yet.
+  const handleUpdateGift = (
+    orderId: string,
+    functionId: string,
+    mappingId: string | null,
+    gift: TikTokGiftInfo,
+  ) => {
     setMyOrders(prev =>
       prev.map(order => {
-        if (order.id === orderId) {
-          let updatedUfgs = [...order.user_function_gifts];
+        if (order.id !== orderId) return order;
+        let updatedUfgs = [...order.user_function_gifts];
 
-          // ถ้า gift ที่เลือกเป็น 'like' → reset function อื่นที่ใช้ like อยู่ให้เป็น NONE_GIFT
-          if (gift.trigger_type === 'like') {
-            updatedUfgs = updatedUfgs.map(ufg => {
-              if (ufg.function_id !== functionId && ufg.gifts?.trigger_type === 'like') {
-                // หาชื่อ function ที่ถูก reset เพื่อแจ้ง user
-                toast.info(`"${ufg.gifts.name}" unassigned from previous function`);
-                return { ...ufg, gift_id: NONE_GIFT.id, gifts: NONE_GIFT };
-              }
-              return ufg;
-            });
-          }
+        // Like-type gifts: only ONE like row is allowed per function. If we're about to
+        // place a like gift in function F, reset every other like row in F to NONE.
+        // Different functions can each have their own like row independently.
+        if (gift.trigger_type === 'like') {
+          updatedUfgs = updatedUfgs.map(ufg => {
+            const isThisRow = ufg.id === mappingId;
+            if (
+              !isThisRow &&
+              ufg.function_id === functionId &&
+              ufg.gifts?.trigger_type === 'like'
+            ) {
+              toast.info(t('interactive_mapping.like_unassigned', { name: ufg.gifts.name }));
+              return { ...ufg, gift_id: NONE_GIFT.id, gifts: NONE_GIFT };
+            }
+            return ufg;
+          });
+        }
 
-          const existingIdx = updatedUfgs.findIndex(ufg => ufg.function_id === functionId);
-          const newUfg: UserFunctionGift = {
-            id: updatedUfgs[existingIdx]?.id || 'new',
+        if (mappingId === null) {
+          // New rows default to active — multiple active gifts per function is allowed.
+          // User can toggle to standby via the Power button.
+          updatedUfgs.push({
+            id: newTempId(),
             function_id: functionId,
             gift_id: gift.id,
             is_enabled: true,
-            trigger_threshold: updatedUfgs[existingIdx]?.trigger_threshold || 1,
+            trigger_threshold: gift.trigger_type === 'like' ? 1 : null,
             gifts: gift,
-          };
-
-          if (existingIdx >= 0) updatedUfgs[existingIdx] = newUfg;
-          else updatedUfgs.push(newUfg);
-
-          return { ...order, user_function_gifts: updatedUfgs };
+          });
+        } else {
+          updatedUfgs = updatedUfgs.map(u =>
+            u.id === mappingId ? { ...u, gift_id: gift.id, gifts: gift } : u,
+          );
         }
-        return order;
-      })
+
+        return { ...order, user_function_gifts: updatedUfgs };
+      }),
     );
     setIsGiftModalOpen(false);
     setActiveMapping(null);
   };
 
-  const handleUpdateThreshold = (orderId: string, functionId: string, threshold: number) => {
+  const handleUpdateThreshold = (orderId: string, mappingId: string, threshold: number) => {
     setMyOrders(prev =>
-      prev.map(order => {
-        if (order.id === orderId) {
-          return {
-            ...order,
-            user_function_gifts: order.user_function_gifts.map(ufg =>
-              ufg.function_id === functionId ? { ...ufg, trigger_threshold: threshold } : ufg
-            ),
-          };
-        }
-        return order;
-      })
+      prev.map(order =>
+        order.id === orderId
+          ? {
+              ...order,
+              user_function_gifts: order.user_function_gifts.map(ufg =>
+                ufg.id === mappingId ? { ...ufg, trigger_threshold: threshold } : ufg,
+              ),
+            }
+          : order,
+      ),
     );
   };
 
-  const handleToggleFunction = (orderId: string, functionId: string) => {
+  // Active/standby switch: each row toggles independently. A function can have any
+  // number of active gifts at once — every active row triggers the function when its
+  // gift arrives. Standby rows stay in the pool for quick swapping.
+  const handleSetActive = (orderId: string, _functionId: string, mappingId: string) => {
     setMyOrders(prev =>
-      prev.map(order => {
-        if (order.id === orderId) {
-          return {
-            ...order,
-            user_function_gifts: order.user_function_gifts.map(ufg =>
-              ufg.function_id === functionId ? { ...ufg, is_enabled: !ufg.is_enabled } : ufg
-            ),
-          };
-        }
-        return order;
-      })
+      prev.map(order =>
+        order.id === orderId
+          ? {
+              ...order,
+              user_function_gifts: order.user_function_gifts.map(ufg =>
+                ufg.id === mappingId ? { ...ufg, is_enabled: !ufg.is_enabled } : ufg,
+              ),
+            }
+          : order,
+      ),
+    );
+  };
+
+  const handleAddMapping = (orderId: string, functionId: string) => {
+    setActiveMapping({ orderId, functionId, mappingId: null });
+    setGiftSearch('');
+    setIsGiftModalOpen(true);
+  };
+
+  const handleRemoveMapping = (orderId: string, mappingId: string) => {
+    setMyOrders(prev =>
+      prev.map(order =>
+        order.id === orderId
+          ? {
+              ...order,
+              user_function_gifts: order.user_function_gifts.filter(u => u.id !== mappingId),
+            }
+          : order,
+      ),
     );
   };
 
@@ -242,13 +293,19 @@ const InteractiveMapping: React.FC = () => {
     if (!order) return;
     setIsSaving(orderId);
     try {
-      const mappings = order.user_function_gifts.map((ufg: any) => ({
-        functionId: ufg.function_id,
-        giftId: ufg.gift_id,
-        isEnabled: ufg.is_enabled,
-        triggerThreshold: ufg.trigger_threshold
-      }));
+      // Drop incomplete rows (custom rows where user hasn't picked a function yet)
+      const mappings = order.user_function_gifts
+        .filter(ufg => !!ufg.function_id)
+        .map(ufg => ({
+          functionId: ufg.function_id,
+          giftId: ufg.gift_id,
+          isEnabled: ufg.is_enabled,
+          triggerThreshold: ufg.trigger_threshold,
+        }));
       await interactiveApi.updateMapping(orderId, mappings);
+      // Refresh from server so tmp_ ids are replaced by real DB UUIDs and any
+      // duplicate rows the backend skipped don't linger in local state.
+      await fetchMyProducts();
       setSavedOrderId(orderId);
       setTimeout(() => setSavedOrderId(null), 2000);
       toast.success(t('interactive_mapping.mappings_saved'));
@@ -380,7 +437,7 @@ const InteractiveMapping: React.FC = () => {
                 {t('interactive_mapping.title')}
               </h1>
               <p className="im-mono text-[9px] text-white/30 tracking-[0.2em] uppercase mt-0.5">
-                {t('interactive_mapping.subtitle')}
+                {t('interactive_mapping.subtitle')} · BUILD-V2-MULTI-ACTIVE
               </p>
             </div>
           </div>
@@ -465,12 +522,12 @@ const InteractiveMapping: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          <button
+                          {/* <button
                             onClick={() => handleDeleteProduct(order.id)}
                             className="w-9 h-9 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-colors"
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </button> */}
                           <button
                             onClick={() => saveMappings(order.id)}
                             disabled={isSavingThis || isSaved || !isActive}
@@ -487,88 +544,148 @@ const InteractiveMapping: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Function Rows */}
-                    <div className="p-4 flex flex-col gap-2 flex-1">
+                    {/* Function Rows — each function shows its gift pool. One gift can be
+                        active (used by the engine) while the rest stay on standby for quick
+                        swapping. */}
+                    <div className="p-4 flex flex-col gap-3 flex-1">
                       {order.products.product_functions.map((fn: any) => {
-                        const mapping = order.user_function_gifts.find(ufg => ufg.function_id === fn.id);
-                        const isEnabled = mapping?.is_enabled ?? true;
-                        const actualGift = mapping?.gifts || fn.default_gift;
+                        const mappings = order.user_function_gifts.filter(
+                          ufg => ufg.function_id === fn.id,
+                        );
+                        const activeCount = mappings.filter(m => m.is_enabled).length;
 
                         return (
-                          <div
-                            key={fn.id}
-                            className={`im-fn-row rounded-2xl p-3 flex items-center justify-between gap-3 ${!isEnabled ? 'disabled' : ''}`}
-                          >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              {fn.image_url && (
-                                <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] overflow-hidden shrink-0">
-                                  <img src={getFullImageUrl(fn.image_url)} className="w-full h-full object-cover" alt={fn.name} />
-                                </div>
-                              )}
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-white truncate leading-tight">
-                                  {getLocalized(fn, 'label')}
-                                </p>
-                                <p className="im-mono text-[9px] text-white/25 uppercase tracking-[0.1em] mt-0.5">
-                                  {fn.name}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              {actualGift?.trigger_type === 'like' && isEnabled && (
-                                <div className="flex items-center gap-2 mr-1 px-2 py-1 bg-white/[0.03] border border-white/[0.08] rounded-xl">
-                                  <Heart size={12} className="text-pink-400" fill="currentColor" />
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={mapping?.trigger_threshold || 1}
-                                    onClick={e => e.stopPropagation()}
-                                    onMouseDown={e => e.stopPropagation()}
-                                    onChange={e => handleUpdateThreshold(order.id, fn.id, parseInt(e.target.value) || 1)}
-                                    className="w-16 bg-transparent outline-none im-mono text-xs font-bold text-white text-center"
-                                  />
-                                </div>
-                              )}
-
-                              <button
-                                onClick={() => {
-                                  if (!isEnabled || !isActive) return;
-                                  setActiveMapping({ orderId: order.id, functionId: fn.id });
-                                  setGiftSearch('');
-                                  setIsGiftModalOpen(true);
-                                }}
-                                disabled={!isEnabled || !isActive}
-                                className={`im-gift-btn flex items-center gap-2.5 px-3 py-2 rounded-xl ${!isActive ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center overflow-hidden shrink-0">
-                                  {actualGift?.image_url
-                                    ? <img src={getFullImageUrl(actualGift.image_url)} className="w-full h-full object-contain p-0.5" alt="gift" />
-                                    : <Gift size={13} className="text-white/30" />
-                                  }
-                                </div>
-                                <div className="hidden sm:block text-left">
-                                  <p className="text-xs font-semibold text-white/80 truncate max-w-[90px]">
-                                    {actualGift?.name || t('interactive_mapping.any_action')}
+                          <div key={fn.id} className="im-fn-row rounded-2xl p-3 flex flex-col gap-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                {fn.image_url && (
+                                  <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] overflow-hidden shrink-0">
+                                    <img src={getFullImageUrl(fn.image_url)} className="w-full h-full object-cover" alt={fn.name} />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-white truncate leading-tight">
+                                    {getLocalized(fn, 'label')}
                                   </p>
-                                  {actualGift && actualGift.id !== 10001 && (
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                      <Gem size={8} className="text-amber-400" fill="currentColor" />
-                                      <span className="im-mono text-[9px] text-amber-400">{actualGift.diamonds}</span>
-                                    </div>
-                                  )}
+                                  <p className="im-mono text-[9px] text-white/25 uppercase tracking-[0.1em] mt-0.5">
+                                    {fn.name} · {t('interactive_mapping.gift_count', { count: mappings.length })}
+                                    {activeCount === 0 && mappings.length > 0 && (
+                                      <span className="ml-2 text-amber-400">· {t('interactive_mapping.no_active_warn')}</span>
+                                    )}
+                                  </p>
                                 </div>
-                                <ChevronDown size={12} className="text-white/25 hidden sm:block" />
-                              </button>
+                              </div>
 
                               <button
-                                onClick={() => { if (isActive) handleToggleFunction(order.id, fn.id); }}
+                                onClick={() => { if (isActive) handleAddMapping(order.id, fn.id); }}
                                 disabled={!isActive}
-                                className={`im-power-btn w-9 h-9 rounded-xl flex items-center justify-center ${isEnabled ? 'on' : 'off'} ${!isActive ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                className={`im-gift-btn flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white/80 shrink-0 ${!isActive ? 'opacity-30 cursor-not-allowed' : ''}`}
                               >
-                                <Power size={15} strokeWidth={2.5} />
+                                <Plus size={13} strokeWidth={2.8} />
+                                <span className="hidden sm:inline">{t('interactive_mapping.add_gift')}</span>
                               </button>
                             </div>
+
+                            {mappings.length === 0 ? (
+                              <div className="ml-12 px-3 py-2.5 rounded-xl border border-dashed border-white/[0.08] text-[11px] text-white/30 italic">
+                                {t('interactive_mapping.no_gifts_mapped_hint_v2')}
+                              </div>
+                            ) : (
+                              <div className="ml-12 flex flex-col gap-1.5">
+                                {mappings.map(mapping => {
+                                  const gift = mapping.gifts;
+                                  const isEnabled = mapping.is_enabled;
+                                  const isLike = gift?.trigger_type === 'like';
+                                  return (
+                                    <div
+                                      key={mapping.id}
+                                      className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all ${
+                                        isEnabled
+                                          ? 'bg-brand/10 border-brand/40 ring-1 ring-brand/30'
+                                          : 'bg-white/[0.02] border-white/[0.05] opacity-60'
+                                      }`}
+                                    >
+                                      <span
+                                        className={`im-mono text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded shrink-0 ${
+                                          isEnabled
+                                            ? 'bg-brand/30 text-white'
+                                            : 'bg-white/[0.04] text-white/30'
+                                        }`}
+                                      >
+                                        {isEnabled
+                                          ? t('interactive_mapping.active_badge')
+                                          : t('interactive_mapping.standby_badge')}
+                                      </span>
+
+                                      <button
+                                        onClick={() => {
+                                          if (!isActive) return;
+                                          setActiveMapping({ orderId: order.id, functionId: fn.id, mappingId: mapping.id });
+                                          setGiftSearch('');
+                                          setIsGiftModalOpen(true);
+                                        }}
+                                        disabled={!isActive}
+                                        className={`im-gift-btn flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg flex-1 min-w-0 ${!isActive ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                      >
+                                        <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center overflow-hidden shrink-0">
+                                          {gift?.image_url
+                                            ? <img src={getFullImageUrl(gift.image_url)} className="w-full h-full object-contain p-0.5" alt="gift" />
+                                            : <Gift size={13} className="text-white/30" />
+                                          }
+                                        </div>
+                                        <div className="text-left min-w-0 flex-1">
+                                          <p className="text-xs font-semibold text-white/80 truncate">
+                                            {gift?.name || t('interactive_mapping.any_action')}
+                                          </p>
+                                          {gift && gift.id !== 10001 && (
+                                            <div className="flex items-center gap-1 mt-0.5">
+                                              <Gem size={8} className="text-amber-400" fill="currentColor" />
+                                              <span className="im-mono text-[9px] text-amber-400">{gift.diamonds}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        <ChevronDown size={11} className="text-white/25 shrink-0" />
+                                      </button>
+
+                                      {isLike && isEnabled && (
+                                        <div className="flex items-center gap-1.5 px-2 py-1 bg-white/[0.03] border border-white/[0.08] rounded-lg shrink-0">
+                                          <Heart size={11} className="text-pink-400" fill="currentColor" />
+                                          <input
+                                            type="number"
+                                            min="1"
+                                            value={mapping.trigger_threshold || 1}
+                                            onClick={e => e.stopPropagation()}
+                                            onMouseDown={e => e.stopPropagation()}
+                                            onChange={e => handleUpdateThreshold(order.id, mapping.id, parseInt(e.target.value) || 1)}
+                                            className="w-20 bg-transparent outline-none im-mono text-xs font-bold text-white text-center px-1"
+                                          />
+                                        </div>
+                                      )}
+
+                                      <button
+                                        onClick={() => { if (isActive) handleSetActive(order.id, fn.id, mapping.id); }}
+                                        disabled={!isActive}
+                                        className={`im-power-btn w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isEnabled ? 'on' : 'off'} ${!isActive ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                        title={isEnabled
+                                          ? t('interactive_mapping.deactivate_tooltip')
+                                          : t('interactive_mapping.set_active_tooltip')}
+                                      >
+                                        <Power size={13} strokeWidth={2.5} />
+                                      </button>
+
+                                      <button
+                                        onClick={() => { if (isActive) handleRemoveMapping(order.id, mapping.id); }}
+                                        disabled={!isActive}
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.02] border border-white/[0.05] text-white/30 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 shrink-0 transition-colors ${!isActive ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                        title={t('interactive_mapping.remove_mapping')}
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -622,7 +739,7 @@ const InteractiveMapping: React.FC = () => {
             <div className="overflow-y-auto im-scrollbar p-2 flex flex-col gap-0.5">
               {/* None option */}
               <button
-                onClick={() => handleUpdateGift(activeMapping.orderId, activeMapping.functionId, NONE_GIFT)}
+                onClick={() => handleUpdateGift(activeMapping.orderId, activeMapping.functionId, activeMapping.mappingId, NONE_GIFT)}
                 className="im-gift-item flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left border border-dashed border-white/[0.07]"
               >
                 <div className="w-9 h-9 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-white/30 shrink-0">
@@ -637,7 +754,7 @@ const InteractiveMapping: React.FC = () => {
               {filteredGifts.map(gift => (
                 <button
                   key={gift.id}
-                  onClick={() => handleUpdateGift(activeMapping.orderId, activeMapping.functionId, gift)}
+                  onClick={() => handleUpdateGift(activeMapping.orderId, activeMapping.functionId, activeMapping.mappingId, gift)}
                   className="im-gift-item flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left"
                 >
                   <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center p-1.5 shrink-0 overflow-hidden">

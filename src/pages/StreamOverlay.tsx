@@ -7,6 +7,7 @@ import { OverlayProvider, useOverlay, DEFAULT_SETTINGS } from '../context/Overla
 import WinCountControls from '../components/overlay/WinCountControls';
 import SpinControls from '../components/overlay/SpinControls';
 import LivePreview from '../components/overlay/LivePreview';
+import HotkeyDebugPanel from '../components/overlay/HotkeyDebugPanel';
 
 export const TEMPLATES = [
   { id: 'T1', name: 'Neon Cyber', preview: '/assets/T1.jpg' },
@@ -226,6 +227,9 @@ const StreamOverlayContent: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Hotkey Debug Panel — only on Win Count tab */}
+              {activeTab === 'wincount' && <HotkeyDebugPanel />}
 
               {/* Preview Cards */}
               <div className="grid grid-cols-1 gap-8">
