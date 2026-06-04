@@ -397,10 +397,10 @@ const InteractiveMapping: React.FC = () => {
   };
 
   const getLocalized = (obj: any, field: string) => {
-    const isEn = i18n.language.startsWith('en');
-    if (isEn && obj[`${field}_en`]) return obj[`${field}_en`];
-    if (!isEn && obj[`${field}_th`]) return obj[`${field}_th`];
-    return obj[`${field}_th`] || obj[`${field}_en`] || obj[field];
+    const isTh = i18n.language.startsWith('th');
+    if (isTh && obj[`${field}_th`]) return obj[`${field}_th`];
+    if (!isTh && obj[`${field}_en`]) return obj[`${field}_en`];
+    return obj[`${field}_en`] || obj[`${field}_th`] || obj[field];
   };
 
   if (loading) {
