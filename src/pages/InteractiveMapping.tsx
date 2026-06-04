@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, unstable_usePrompt as usePrompt } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   ShoppingBag,
   Search,
@@ -116,12 +116,6 @@ const InteractiveMapping: React.FC = () => {
   // Cleared every time we re-sync from the server (initial load + after save).
   const [isDirty, setIsDirty] = useState(false);
 
-  // In-app navigation guard (react-router): block route changes when dirty.
-  usePrompt({
-    when: isDirty,
-    message: t('interactive_mapping.confirm_leave_unsaved'),
-  });
-
   // Browser-level guard: warn before tab close / reload / external nav.
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -132,6 +126,38 @@ const InteractiveMapping: React.FC = () => {
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [isDirty]);
+
+  // In-app navigation guard: react-router-dom 6's `usePrompt`/`useBlocker`
+  // requires a data router (`createHashRouter`), but this app still uses the
+  // legacy `<HashRouter>`. Intercept clicks on anchor elements during the
+  // capture phase instead — covers Sidebar NavLinks and any other in-app
+  // navigation that renders as <a>.
+  useEffect(() => {
+    if (!isDirty) return;
+    const onDocClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement | null)?.closest('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href) return;
+      // Only intercept in-app routes (anything that stays in the app shell).
+      // External links like https://… aren't guarded; the beforeunload above
+      // covers those.
+      const isInApp = href.startsWith('#') || href.startsWith('/') || href.startsWith('./');
+      if (!isInApp) return;
+      // If we're already on this exact href, the link is a no-op — let it pass.
+      if (anchor.href === window.location.href) return;
+      if (!window.confirm(t('interactive_mapping.confirm_leave_unsaved'))) {
+        e.preventDefault();
+        e.stopPropagation();
+      } else {
+        // User confirmed; clear the flag so subsequent clicks (or the page
+        // they land on) don't get blocked.
+        setIsDirty(false);
+      }
+    };
+    document.addEventListener('click', onDocClick, true);
+    return () => document.removeEventListener('click', onDocClick, true);
+  }, [isDirty, t]);
 
   useEffect(() => {
     fetchMyProducts();
