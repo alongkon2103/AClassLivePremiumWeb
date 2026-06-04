@@ -110,7 +110,9 @@
     "remove_mapping": "Eliminar este regalo",
     "no_gifts_mapped_hint_v2": "Sin regalos — haz clic en + Añadir regalo para empezar.",
     "no_active_warn": "sin regalo activo",
-    "connect_no_active_warn": "Ningún juego activo. Abriendo Mapeo Interactivo en {{count}}s…"
+    "connect_no_active_warn": "Ningún juego activo. Abriendo Mapeo Interactivo en {{count}}s…",
+    "confirm_remove_mapping": "¿Eliminar este regalo del conjunto?",
+    "confirm_leave_unsaved": "Tienes cambios sin guardar. ¿Salir de todos modos?"
   },
   "dashboard": {
     "placeholder_username": "usuario_tiktok",

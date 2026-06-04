@@ -110,7 +110,9 @@
     "remove_mapping": "Xóa quà này",
     "no_gifts_mapped_hint_v2": "Chưa có quà — bấm + Thêm quà để bắt đầu.",
     "no_active_warn": "không có quà đang dùng",
-    "connect_no_active_warn": "Chưa có game nào kích hoạt. Mở Ánh xạ tương tác sau {{count}} giây…"
+    "connect_no_active_warn": "Chưa có game nào kích hoạt. Mở Ánh xạ tương tác sau {{count}} giây…",
+    "confirm_remove_mapping": "Xoá quà này khỏi danh sách?",
+    "confirm_leave_unsaved": "Bạn có thay đổi chưa lưu. Vẫn rời đi?"
   },
   "dashboard": {
     "placeholder_username": "tên_tiktok",

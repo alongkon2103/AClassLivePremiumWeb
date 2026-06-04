@@ -110,7 +110,9 @@
     "remove_mapping": "このギフトを削除",
     "no_gifts_mapped_hint_v2": "ギフトがありません — + ギフト追加 で開始",
     "no_active_warn": "アクティブなギフトなし",
-    "connect_no_active_warn": "アクティブなゲームがありません。{{count}} 秒後にインタラクティブマッピングを開きます…"
+    "connect_no_active_warn": "アクティブなゲームがありません。{{count}} 秒後にインタラクティブマッピングを開きます…",
+    "confirm_remove_mapping": "このギフトをプールから削除しますか?",
+    "confirm_leave_unsaved": "未保存の変更があります。離れますか?"
   },
   "dashboard": {
     "placeholder_username": "tiktokユーザー名",

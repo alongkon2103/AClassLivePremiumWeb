@@ -110,7 +110,9 @@
     "remove_mapping": "ลบของขวัญนี้",
     "no_gifts_mapped_hint_v2": "ยังไม่มีของขวัญ — กด + เพิ่มของขวัญ เพื่อเริ่ม",
     "no_active_warn": "ยังไม่มีของขวัญที่ใช้",
-    "connect_no_active_warn": "ยังไม่มีเกมเปิดใช้ กำลังเปิดหน้าตั้งค่าใน {{count}} วิ…"
+    "connect_no_active_warn": "ยังไม่มีเกมเปิดใช้ กำลังเปิดหน้าตั้งค่าใน {{count}} วิ…",
+    "confirm_remove_mapping": "ต้องการลบของขวัญนี้ออกจากชุดใช่ไหม?",
+    "confirm_leave_unsaved": "คุณยังไม่ได้บันทึก ยืนยันออกจากหน้านี้?"
   },
   "dashboard": {
     "placeholder_username": "ชื่อ tiktok",

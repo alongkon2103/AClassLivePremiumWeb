@@ -110,7 +110,9 @@
     "remove_mapping": "移除此礼物",
     "no_gifts_mapped_hint_v2": "尚无礼物 — 点击 + 添加礼物 开始。",
     "no_active_warn": "未启用任何礼物",
-    "connect_no_active_warn": "没有启用的游戏 · {{count}} 秒后打开互动映射…"
+    "connect_no_active_warn": "没有启用的游戏 · {{count}} 秒后打开互动映射…",
+    "confirm_remove_mapping": "确定要从池中移除此礼物吗?",
+    "confirm_leave_unsaved": "您有未保存的更改。仍要离开吗?"
   },
   "dashboard": {
     "placeholder_username": "tiktok 用户名",

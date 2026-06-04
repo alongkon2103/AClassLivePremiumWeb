@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, unstable_usePrompt as usePrompt } from 'react-router-dom';
 import {
   ShoppingBag,
   Search,
@@ -112,6 +112,27 @@ const InteractiveMapping: React.FC = () => {
   >(null);
   const [giftSearch, setGiftSearch] = useState('');
 
+  // Tracks whether the user has changes that haven't been persisted yet.
+  // Cleared every time we re-sync from the server (initial load + after save).
+  const [isDirty, setIsDirty] = useState(false);
+
+  // In-app navigation guard (react-router): block route changes when dirty.
+  usePrompt({
+    when: isDirty,
+    message: t('interactive_mapping.confirm_leave_unsaved'),
+  });
+
+  // Browser-level guard: warn before tab close / reload / external nav.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty]);
+
   useEffect(() => {
     fetchMyProducts();
     const stored = localStorage.getItem('aclass_active_order_id');
@@ -172,6 +193,9 @@ const InteractiveMapping: React.FC = () => {
         return new Date(o.expires_at).getTime() > now;
       });
       setMyOrders(active);
+      // Re-syncing from server means local edits are now persisted (or wiped).
+      // Clear the dirty flag so navigation no longer prompts.
+      setIsDirty(false);
     } catch (err) {
       toast.error('Failed to load your products');
     } finally {
@@ -232,6 +256,7 @@ const InteractiveMapping: React.FC = () => {
         return { ...order, user_function_gifts: updatedUfgs };
       }),
     );
+    setIsDirty(true);
     setIsGiftModalOpen(false);
     setActiveMapping(null);
   };
@@ -249,6 +274,7 @@ const InteractiveMapping: React.FC = () => {
           : order,
       ),
     );
+    setIsDirty(true);
   };
 
   // Active/standby switch: each row toggles independently. A function can have any
@@ -267,15 +293,19 @@ const InteractiveMapping: React.FC = () => {
           : order,
       ),
     );
+    setIsDirty(true);
   };
 
   const handleAddMapping = (orderId: string, functionId: string) => {
+    // Opening the picker isn't itself a state change; isDirty will flip once
+    // the user actually selects a gift (handleUpdateGift).
     setActiveMapping({ orderId, functionId, mappingId: null });
     setGiftSearch('');
     setIsGiftModalOpen(true);
   };
 
   const handleRemoveMapping = (orderId: string, mappingId: string) => {
+    if (!window.confirm(t('interactive_mapping.confirm_remove_mapping'))) return;
     setMyOrders(prev =>
       prev.map(order =>
         order.id === orderId
@@ -286,6 +316,7 @@ const InteractiveMapping: React.FC = () => {
           : order,
       ),
     );
+    setIsDirty(true);
   };
 
   const saveMappings = async (orderId: string) => {

@@ -110,7 +110,9 @@
     "remove_mapping": "Hapus hadiah ini",
     "no_gifts_mapped_hint_v2": "Belum ada hadiah — klik + Tambah hadiah untuk memulai.",
     "no_active_warn": "tidak ada hadiah aktif",
-    "connect_no_active_warn": "Tidak ada game aktif. Membuka Pemetaan Interaktif dalam {{count}} detik…"
+    "connect_no_active_warn": "Tidak ada game aktif. Membuka Pemetaan Interaktif dalam {{count}} detik…",
+    "confirm_remove_mapping": "Hapus hadiah ini dari kumpulan?",
+    "confirm_leave_unsaved": "Ada perubahan belum disimpan. Tetap pergi?"
   },
   "dashboard": {
     "placeholder_username": "nama_tiktok",

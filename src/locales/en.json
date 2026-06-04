@@ -110,7 +110,9 @@
     "remove_mapping": "Remove this gift",
     "no_gifts_mapped_hint_v2": "No gifts mapped — click + Add gift to add one.",
     "no_active_warn": "no active gift",
-    "connect_no_active_warn": "No game is active. Opening Interactive Mapping in {{count}}s…"
+    "connect_no_active_warn": "No game is active. Opening Interactive Mapping in {{count}}s…",
+    "confirm_remove_mapping": "Remove this gift from the pool?",
+    "confirm_leave_unsaved": "You have unsaved changes. Leave anyway?"
   },
   "dashboard": {
     "placeholder_username": "tiktok_username",
