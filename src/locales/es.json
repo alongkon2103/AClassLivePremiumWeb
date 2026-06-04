@@ -109,7 +109,30 @@
     "deactivate_tooltip": "Haz clic para poner en reserva",
     "remove_mapping": "Eliminar este regalo",
     "no_gifts_mapped_hint_v2": "Sin regalos — haz clic en + Añadir regalo para empezar.",
-    "no_active_warn": "sin regalo activo"
+    "no_active_warn": "sin regalo activo",
+    "connect_no_active_warn": "Ningún juego activo. Abriendo Mapeo Interactivo en {{count}}s…"
+  },
+  "dashboard": {
+    "placeholder_username": "usuario_tiktok",
+    "status_live": "En vivo",
+    "status_wait": "Espera…",
+    "status_linking": "Conectando…",
+    "status_offline": "Desconectado",
+    "connect_on": "ON",
+    "connect_off": "OFF",
+    "stat_gifts": "Regalos",
+    "stat_likes": "Me gusta",
+    "stat_viewers": "Espectadores",
+    "account": "Cuenta",
+    "guest": "Invitado",
+    "console": "Consola",
+    "no_output": "Sin salida",
+    "panel_gifts": "Regalos",
+    "panel_comments": "Comentarios",
+    "panel_likes": "Me gusta",
+    "panel_follows": "Seguidores",
+    "waiting": "Esperando…",
+    "followed": "siguió"
   },
   "stream_overlay": {
     "title": "SUPERPOSICIÓN DE STREAM",

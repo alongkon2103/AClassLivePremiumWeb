@@ -109,7 +109,30 @@
     "deactivate_tooltip": "คลิกเพื่อพักของขวัญนี้",
     "remove_mapping": "ลบของขวัญนี้",
     "no_gifts_mapped_hint_v2": "ยังไม่มีของขวัญ — กด + เพิ่มของขวัญ เพื่อเริ่ม",
-    "no_active_warn": "ยังไม่มีของขวัญที่ใช้"
+    "no_active_warn": "ยังไม่มีของขวัญที่ใช้",
+    "connect_no_active_warn": "ยังไม่มีเกมเปิดใช้ กำลังเปิดหน้าตั้งค่าใน {{count}} วิ…"
+  },
+  "dashboard": {
+    "placeholder_username": "ชื่อ tiktok",
+    "status_live": "ไลฟ์",
+    "status_wait": "กำลังรอ…",
+    "status_linking": "กำลังเชื่อม…",
+    "status_offline": "ออฟไลน์",
+    "connect_on": "เปิด",
+    "connect_off": "ปิด",
+    "stat_gifts": "ของขวัญ",
+    "stat_likes": "ไลก์",
+    "stat_viewers": "ผู้ชม",
+    "account": "บัญชี",
+    "guest": "ผู้เยี่ยมชม",
+    "console": "คอนโซล",
+    "no_output": "ยังไม่มีข้อความ",
+    "panel_gifts": "ของขวัญ",
+    "panel_comments": "ความคิดเห็น",
+    "panel_likes": "ไลก์",
+    "panel_follows": "ผู้ติดตาม",
+    "waiting": "กำลังรอ…",
+    "followed": "กดติดตาม"
   },
   "stream_overlay": {
     "title": "สตรีมโอเวอร์เลย์",

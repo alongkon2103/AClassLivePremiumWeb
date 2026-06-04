@@ -109,7 +109,30 @@
     "deactivate_tooltip": "Bấm để chuyển sang dự phòng",
     "remove_mapping": "Xóa quà này",
     "no_gifts_mapped_hint_v2": "Chưa có quà — bấm + Thêm quà để bắt đầu.",
-    "no_active_warn": "không có quà đang dùng"
+    "no_active_warn": "không có quà đang dùng",
+    "connect_no_active_warn": "Chưa có game nào kích hoạt. Mở Ánh xạ tương tác sau {{count}} giây…"
+  },
+  "dashboard": {
+    "placeholder_username": "tên_tiktok",
+    "status_live": "Đang Live",
+    "status_wait": "Chờ…",
+    "status_linking": "Đang kết nối…",
+    "status_offline": "Ngoại tuyến",
+    "connect_on": "BẬT",
+    "connect_off": "TẮT",
+    "stat_gifts": "Quà",
+    "stat_likes": "Lượt thích",
+    "stat_viewers": "Người xem",
+    "account": "Tài khoản",
+    "guest": "Khách",
+    "console": "Bảng điều khiển",
+    "no_output": "Chưa có dữ liệu",
+    "panel_gifts": "Quà",
+    "panel_comments": "Bình luận",
+    "panel_likes": "Lượt thích",
+    "panel_follows": "Người theo dõi",
+    "waiting": "Đang chờ…",
+    "followed": "đã theo dõi"
   },
   "stream_overlay": {
     "title": "LỚP PHỦ STREAM",

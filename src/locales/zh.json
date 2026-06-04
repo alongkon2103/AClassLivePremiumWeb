@@ -109,7 +109,30 @@
     "deactivate_tooltip": "点击设为备用",
     "remove_mapping": "移除此礼物",
     "no_gifts_mapped_hint_v2": "尚无礼物 — 点击 + 添加礼物 开始。",
-    "no_active_warn": "未启用任何礼物"
+    "no_active_warn": "未启用任何礼物",
+    "connect_no_active_warn": "没有启用的游戏 · {{count}} 秒后打开互动映射…"
+  },
+  "dashboard": {
+    "placeholder_username": "tiktok 用户名",
+    "status_live": "直播中",
+    "status_wait": "等待…",
+    "status_linking": "连接中…",
+    "status_offline": "离线",
+    "connect_on": "开启",
+    "connect_off": "关闭",
+    "stat_gifts": "礼物",
+    "stat_likes": "点赞",
+    "stat_viewers": "观众",
+    "account": "账号",
+    "guest": "访客",
+    "console": "控制台",
+    "no_output": "暂无输出",
+    "panel_gifts": "礼物",
+    "panel_comments": "评论",
+    "panel_likes": "点赞",
+    "panel_follows": "关注",
+    "waiting": "等待中…",
+    "followed": "已关注"
   },
   "stream_overlay": {
     "title": "直播覆盖层",

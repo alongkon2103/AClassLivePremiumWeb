@@ -3,6 +3,7 @@ import React, {
   ReactNode, useCallback, useRef
 } from 'react';
 import { toast } from 'sonner';
+import i18n from '../i18n';
 
 export type AppStatus = 'OFFLINE' | 'WAIT' | 'LIVE';
 
@@ -116,8 +117,26 @@ export const TikTokProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
       if (!activeOrderId) {
         addSystemLog('❌ Please activate a game (Power ON) before connecting.');
-        toast.error('Please activate a game before connecting.');
+        // Bounce the user to the mapping page after a short visible countdown
+        // so they understand WHERE to go fix it, not just that something is wrong.
+        let secondsLeft = 3;
+        const makeMsg = (s: number) =>
+          i18n.t('interactive_mapping.connect_no_active_warn', { count: s });
+        const toastId = toast.error(makeMsg(secondsLeft), { duration: Infinity });
+        const tick = setInterval(() => {
+          secondsLeft -= 1;
+          if (secondsLeft <= 0) {
+            clearInterval(tick);
+            toast.dismiss(toastId);
+            // HashRouter — use hash navigation since this context has no
+            // react-router hook available.
+            window.location.hash = '/interactive-mapping';
+            return;
+          }
+          toast.error(makeMsg(secondsLeft), { id: toastId, duration: Infinity });
+        }, 1000);
         setIsConnecting(false);
+        isConnectingRef.current = false;
         setAppStatus('OFFLINE');
         return;
       }

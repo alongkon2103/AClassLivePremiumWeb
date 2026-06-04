@@ -41,6 +41,8 @@ const Interactive: React.FC = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        // The API already filters this to products the user has a paid,
+        // non-expired order for.
         const res = await interactiveApi.getStoreProducts();
         setProducts(res.data?.data || []);
       } catch (err) {

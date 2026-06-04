@@ -47,6 +47,7 @@ const LogPanel: React.FC<{
   renderLine: (log: LogEntry) => React.ReactNode;
 }> = ({ type, title, icon, logs, scrollRef, renderLine }) => {
   const { accent, dimAccent } = LOG_COLORS[type];
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col rounded-2xl overflow-hidden h-full"
       style={{ background: '#0d0d14', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -64,7 +65,7 @@ const LogPanel: React.FC<{
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar">
         {logs.length === 0 ? (
           <div className="h-full flex items-center justify-center">
-            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: dimAccent }}>Waiting…</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: dimAccent }}>{t('dashboard.waiting')}</p>
           </div>
         ) : (
           logs.map((log) => (
@@ -154,10 +155,10 @@ const Dashboard: React.FC = () => {
         : { background: 'rgba(255,255,255,0.04)', color: '#6b7280', border: '1px solid rgba(255,255,255,0.08)' };
 
   const statusLabel =
-    appStatus === 'LIVE' ? <><Radio size={11} className="animate-pulse" /> Live</> :
-    appStatus === 'WAIT' ? <><Loader2 size={11} className="animate-spin" /> Wait…</> :
-    isConnecting         ? <><Loader2 size={11} className="animate-spin" /> Linking…</> :
-                           <><WifiOff size={11} /> Offline</>;
+    appStatus === 'LIVE' ? <><Radio size={11} className="animate-pulse" /> {t('dashboard.status_live')}</> :
+    appStatus === 'WAIT' ? <><Loader2 size={11} className="animate-spin" /> {t('dashboard.status_wait')}</> :
+    isConnecting         ? <><Loader2 size={11} className="animate-spin" /> {t('dashboard.status_linking')}</> :
+                           <><WifiOff size={11} /> {t('dashboard.status_offline')}</>;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#08080c]">
@@ -173,7 +174,7 @@ const Dashboard: React.FC = () => {
             <span className="text-[11px] font-bold text-text3 pl-1">@</span>
             <input
               type="text"
-              placeholder="tiktok_username"
+              placeholder={t('dashboard.placeholder_username')}
               value={roomUser}
               onChange={e => setRoomUser(e.target.value)}
               disabled={isConnecting || connected}
@@ -191,7 +192,7 @@ const Dashboard: React.FC = () => {
             >
               {isConnecting
                 ? <Loader2 size={12} className="animate-spin" />
-                : connected ? 'OFF' : 'ON'
+                : connected ? t('dashboard.connect_off') : t('dashboard.connect_on')
               }
             </button>
           </div>
@@ -205,9 +206,9 @@ const Dashboard: React.FC = () => {
 
         {/* Stats row */}
         <div className="flex items-center gap-3">
-          <StatCard label="Gifts"   value={giftLogs.length}   icon={<Gift  size={14} />} accent="#a78bfa" />
-          <StatCard label="Likes"   value={stats.likeCount}   icon={<Heart size={14} />} accent="#f472b6" />
-          <StatCard label="Viewers" value={stats.viewerCount} icon={<Users size={14} />} accent="#34d399" />
+          <StatCard label={t('dashboard.stat_gifts')}   value={giftLogs.length}   icon={<Gift  size={14} />} accent="#a78bfa" />
+          <StatCard label={t('dashboard.stat_likes')}   value={stats.likeCount}   icon={<Heart size={14} />} accent="#f472b6" />
+          <StatCard label={t('dashboard.stat_viewers')} value={stats.viewerCount} icon={<Users size={14} />} accent="#34d399" />
         </div>
 
         {/* User */}
@@ -217,8 +218,8 @@ const Dashboard: React.FC = () => {
             {(currentUser?.username || 'G')[0].toUpperCase()}
           </div>
           <div>
-            <div className="text-[10px] text-text3 font-bold uppercase tracking-widest leading-none">Account</div>
-            <div className="text-xs font-bold leading-tight">{currentUser?.username || 'Guest'}</div>
+            <div className="text-[10px] text-text3 font-bold uppercase tracking-widest leading-none">{t('dashboard.account')}</div>
+            <div className="text-xs font-bold leading-tight">{currentUser?.username || t('dashboard.guest')}</div>
           </div>
         </div>
       </div>
@@ -233,11 +234,11 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center gap-2 px-3 py-2.5 shrink-0"
               style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               <Terminal size={12} className="text-text3" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-text3">Console</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-text3">{t('dashboard.console')}</span>
             </div>
             <div ref={systemRef} className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar">
               {systemLogs.length === 0
-                ? <p className="text-[9px] text-text3/30 font-mono p-1">No output</p>
+                ? <p className="text-[9px] text-text3/30 font-mono p-1">{t('dashboard.no_output')}</p>
                 : systemLogs.map(log => (
                   <div key={log.id} className="font-mono text-[9px] text-text3/60 leading-tight px-1 py-0.5">
                     <span className="opacity-40">[{log.time}]</span> {log.message}
@@ -251,7 +252,7 @@ const Dashboard: React.FC = () => {
         {/* 2×2 Log Grid */}
         <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-3 overflow-hidden">
           <LogPanel
-            type="gift" title="Gifts" icon={<Gift size={12} />}
+            type="gift" title={t('dashboard.panel_gifts')} icon={<Gift size={12} />}
             logs={giftLogs} scrollRef={giftRef}
             renderLine={log => (
               <>
@@ -263,7 +264,7 @@ const Dashboard: React.FC = () => {
             )}
           />
           <LogPanel
-            type="comment" title="Comments" icon={<MessageSquare size={12} />}
+            type="comment" title={t('dashboard.panel_comments')} icon={<MessageSquare size={12} />}
             logs={commentLogs} scrollRef={commentRef}
             renderLine={log => (
               <>
@@ -274,7 +275,7 @@ const Dashboard: React.FC = () => {
             )}
           />
           <LogPanel
-            type="like" title="Likes" icon={<Heart size={12} />}
+            type="like" title={t('dashboard.panel_likes')} icon={<Heart size={12} />}
             logs={likeLogs} scrollRef={likeRef}
             renderLine={log => (
               <>
@@ -285,12 +286,12 @@ const Dashboard: React.FC = () => {
             )}
           />
           <LogPanel
-            type="follow" title="Follows" icon={<UserPlus size={12} />}
+            type="follow" title={t('dashboard.panel_follows')} icon={<UserPlus size={12} />}
             logs={followLogs} scrollRef={followRef}
             renderLine={log => (
               <>
                 <span className="font-bold shrink-0" style={{ color: '#fbbf24' }}>{log.user}</span>
-                <span className="text-white/30 mx-1">followed</span>
+                <span className="text-white/30 mx-1">{t('dashboard.followed')}</span>
               </>
             )}
           />

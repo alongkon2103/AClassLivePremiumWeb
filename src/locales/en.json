@@ -109,7 +109,30 @@
     "deactivate_tooltip": "Click to set as standby",
     "remove_mapping": "Remove this gift",
     "no_gifts_mapped_hint_v2": "No gifts mapped — click + Add gift to add one.",
-    "no_active_warn": "no active gift"
+    "no_active_warn": "no active gift",
+    "connect_no_active_warn": "No game is active. Opening Interactive Mapping in {{count}}s…"
+  },
+  "dashboard": {
+    "placeholder_username": "tiktok_username",
+    "status_live": "Live",
+    "status_wait": "Wait…",
+    "status_linking": "Linking…",
+    "status_offline": "Offline",
+    "connect_on": "ON",
+    "connect_off": "OFF",
+    "stat_gifts": "Gifts",
+    "stat_likes": "Likes",
+    "stat_viewers": "Viewers",
+    "account": "Account",
+    "guest": "Guest",
+    "console": "Console",
+    "no_output": "No output",
+    "panel_gifts": "Gifts",
+    "panel_comments": "Comments",
+    "panel_likes": "Likes",
+    "panel_follows": "Follows",
+    "waiting": "Waiting…",
+    "followed": "followed"
   },
   "stream_overlay": {
     "title": "STREAM OVERLAY",

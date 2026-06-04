@@ -109,7 +109,30 @@
     "deactivate_tooltip": "Klik untuk jadikan cadangan",
     "remove_mapping": "Hapus hadiah ini",
     "no_gifts_mapped_hint_v2": "Belum ada hadiah — klik + Tambah hadiah untuk memulai.",
-    "no_active_warn": "tidak ada hadiah aktif"
+    "no_active_warn": "tidak ada hadiah aktif",
+    "connect_no_active_warn": "Tidak ada game aktif. Membuka Pemetaan Interaktif dalam {{count}} detik…"
+  },
+  "dashboard": {
+    "placeholder_username": "nama_tiktok",
+    "status_live": "Live",
+    "status_wait": "Tunggu…",
+    "status_linking": "Menghubungkan…",
+    "status_offline": "Offline",
+    "connect_on": "ON",
+    "connect_off": "OFF",
+    "stat_gifts": "Hadiah",
+    "stat_likes": "Suka",
+    "stat_viewers": "Penonton",
+    "account": "Akun",
+    "guest": "Tamu",
+    "console": "Konsol",
+    "no_output": "Tidak ada output",
+    "panel_gifts": "Hadiah",
+    "panel_comments": "Komentar",
+    "panel_likes": "Suka",
+    "panel_follows": "Pengikut",
+    "waiting": "Menunggu…",
+    "followed": "mengikuti"
   },
   "stream_overlay": {
     "title": "OVERLAY STREAM",

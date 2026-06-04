@@ -109,7 +109,30 @@
     "deactivate_tooltip": "クリックで予備に戻す",
     "remove_mapping": "このギフトを削除",
     "no_gifts_mapped_hint_v2": "ギフトがありません — + ギフト追加 で開始",
-    "no_active_warn": "アクティブなギフトなし"
+    "no_active_warn": "アクティブなギフトなし",
+    "connect_no_active_warn": "アクティブなゲームがありません。{{count}} 秒後にインタラクティブマッピングを開きます…"
+  },
+  "dashboard": {
+    "placeholder_username": "tiktokユーザー名",
+    "status_live": "ライブ",
+    "status_wait": "待機…",
+    "status_linking": "接続中…",
+    "status_offline": "オフライン",
+    "connect_on": "オン",
+    "connect_off": "オフ",
+    "stat_gifts": "ギフト",
+    "stat_likes": "いいね",
+    "stat_viewers": "視聴者",
+    "account": "アカウント",
+    "guest": "ゲスト",
+    "console": "コンソール",
+    "no_output": "出力なし",
+    "panel_gifts": "ギフト",
+    "panel_comments": "コメント",
+    "panel_likes": "いいね",
+    "panel_follows": "フォロー",
+    "waiting": "待機中…",
+    "followed": "フォローしました"
   },
   "stream_overlay": {
     "title": "ストリームオーバーレイ",

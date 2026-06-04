@@ -200,7 +200,7 @@ const Sidebar: React.FC = () => {
         </p>
 
         <div
-          className="rounded-xl border overflow-hidden transition-all"
+          className="rounded-xl border border-border overflow-hidden transition-all"
           style={cardStyle}
         >
           {/* Status header */}
