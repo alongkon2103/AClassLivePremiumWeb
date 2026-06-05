@@ -87,6 +87,7 @@ const Sidebar: React.FC = () => {
 
   const [restartOpen, setRestartOpen] = React.useState(false);
   const [restarting, setRestarting] = React.useState(false);
+  const [logoutOpen, setLogoutOpen] = React.useState(false);
 
   const handleRestart = async () => {
     if (restarting) return;
@@ -330,7 +331,7 @@ const Sidebar: React.FC = () => {
             {t('sidebar.restart')}
           </button>
           <button
-            onClick={handleLogout}
+            onClick={() => setLogoutOpen(true)}
             className="flex items-center gap-3 px-3 py-2 text-sm text-red hover:bg-red/10 rounded-lg transition-all w-full"
           >
             <LogOut size={18} />
@@ -338,6 +339,50 @@ const Sidebar: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* ── Logout Confirmation Modal ─────────────────────── */}
+      {logoutOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setLogoutOpen(false)}
+        >
+          <div
+            className="w-[90%] max-w-sm bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red/10 flex items-center justify-center">
+                  <LogOut size={20} className="text-red" />
+                </div>
+                <h3 className="text-base font-bold text-text">
+                  {t('sidebar.logout_title')}
+                </h3>
+              </div>
+              <p className="text-sm text-text2 leading-relaxed">
+                {t('sidebar.logout_message')}
+              </p>
+            </div>
+            <div className="flex gap-2 p-4 border-t border-border bg-bg/30">
+              <button
+                onClick={() => setLogoutOpen(false)}
+                className="flex-1 py-2 px-3 rounded-lg text-sm font-semibold text-text2 hover:bg-surface2 transition-all"
+              >
+                {t('sidebar.logout_cancel')}
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex-1 py-2 px-3 rounded-lg text-sm font-bold bg-red text-white hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                <LogOut size={14} />
+                {t('sidebar.logout_confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Restart Confirmation Modal ────────────────────── */}
       {restartOpen && (

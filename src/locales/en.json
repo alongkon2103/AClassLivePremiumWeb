@@ -27,7 +27,11 @@
     "restart_title": "Restart Application",
     "restart_message": "The application will close and reopen immediately. Any active TikTok connection will be reconnected. Continue?",
     "restart_confirm": "Restart Now",
-    "restart_cancel": "Cancel"
+    "restart_cancel": "Cancel",
+    "logout_title": "Sign Out",
+    "logout_message": "You will be signed out of your account. Any active TikTok connection will be disconnected. Continue?",
+    "logout_confirm": "Sign Out",
+    "logout_cancel": "Cancel"
   },
   "login": {
     "title": "A Class Store",

@@ -27,7 +27,11 @@
     "restart_title": "重启应用程序",
     "restart_message": "程序将立即关闭并重新打开。当前的 TikTok 连接将自动重连。是否继续?",
     "restart_confirm": "立即重启",
-    "restart_cancel": "取消"
+    "restart_cancel": "取消",
+    "logout_title": "退出登录",
+    "logout_message": "您即将退出登录。当前的 TikTok 连接将被断开。是否继续?",
+    "logout_confirm": "退出登录",
+    "logout_cancel": "取消"
   },
   "login": {
     "title": "A Class Store",

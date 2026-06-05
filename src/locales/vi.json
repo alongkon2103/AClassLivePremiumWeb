@@ -27,7 +27,11 @@
     "restart_title": "Khởi động lại ứng dụng",
     "restart_message": "Ứng dụng sẽ đóng và mở lại ngay lập tức. Mọi kết nối TikTok đang hoạt động sẽ được kết nối lại. Tiếp tục?",
     "restart_confirm": "Khởi động lại ngay",
-    "restart_cancel": "Hủy"
+    "restart_cancel": "Hủy",
+    "logout_title": "Đăng xuất",
+    "logout_message": "Bạn sẽ đăng xuất khỏi tài khoản. Mọi kết nối TikTok đang hoạt động sẽ bị ngắt. Tiếp tục?",
+    "logout_confirm": "Đăng xuất",
+    "logout_cancel": "Hủy"
   },
   "login": {
     "title": "A Class Store",

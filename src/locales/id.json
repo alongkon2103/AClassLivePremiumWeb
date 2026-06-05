@@ -27,7 +27,11 @@
     "restart_title": "Mulai ulang aplikasi",
     "restart_message": "Aplikasi akan ditutup dan dibuka kembali segera. Koneksi TikTok yang aktif akan tersambung ulang. Lanjutkan?",
     "restart_confirm": "Mulai ulang sekarang",
-    "restart_cancel": "Batal"
+    "restart_cancel": "Batal",
+    "logout_title": "Keluar",
+    "logout_message": "Anda akan keluar dari akun. Koneksi TikTok yang aktif akan terputus. Lanjutkan?",
+    "logout_confirm": "Keluar",
+    "logout_cancel": "Batal"
   },
   "login": {
     "title": "A Class Store",

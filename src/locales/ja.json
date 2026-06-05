@@ -27,7 +27,11 @@
     "restart_title": "アプリを再起動",
     "restart_message": "アプリが直ちに終了して再起動します。現在の TikTok 接続は再接続されます。続行しますか?",
     "restart_confirm": "今すぐ再起動",
-    "restart_cancel": "キャンセル"
+    "restart_cancel": "キャンセル",
+    "logout_title": "ログアウト",
+    "logout_message": "アカウントからログアウトします。現在の TikTok 接続は切断されます。続行しますか?",
+    "logout_confirm": "ログアウト",
+    "logout_cancel": "キャンセル"
   },
   "login": {
     "title": "A Class Store",
