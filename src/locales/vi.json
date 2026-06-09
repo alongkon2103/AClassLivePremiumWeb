@@ -116,7 +116,10 @@
     "no_active_warn": "không có quà đang dùng",
     "connect_no_active_warn": "Chưa có game nào kích hoạt. Mở Ánh xạ tương tác sau {{count}} giây…",
     "confirm_remove_mapping": "Xoá quà này khỏi danh sách?",
-    "confirm_leave_unsaved": "Bạn có thay đổi chưa lưu. Vẫn rời đi?"
+    "confirm_leave_unsaved": "Bạn có thay đổi chưa lưu. Vẫn rời đi?",
+    "test_tooltip": "Thử kích hoạt sự kiện quà này",
+    "test_emitted": "Đã gửi sự kiện thử: {{name}}",
+    "test_unavailable": "Chức năng thử chỉ hoạt động trong ứng dụng máy tính"
   },
   "dashboard": {
     "placeholder_username": "tên_tiktok",

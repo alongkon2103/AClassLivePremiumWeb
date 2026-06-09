@@ -116,7 +116,10 @@
     "no_active_warn": "アクティブなギフトなし",
     "connect_no_active_warn": "アクティブなゲームがありません。{{count}} 秒後にインタラクティブマッピングを開きます…",
     "confirm_remove_mapping": "このギフトをプールから削除しますか?",
-    "confirm_leave_unsaved": "未保存の変更があります。離れますか?"
+    "confirm_leave_unsaved": "未保存の変更があります。離れますか?",
+    "test_tooltip": "このギフトイベントをテスト送信",
+    "test_emitted": "テストイベント送信: {{name}}",
+    "test_unavailable": "テストはデスクトップアプリ内のみ動作します"
   },
   "dashboard": {
     "placeholder_username": "tiktokユーザー名",

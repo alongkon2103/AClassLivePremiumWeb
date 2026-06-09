@@ -116,7 +116,10 @@
     "no_active_warn": "tidak ada hadiah aktif",
     "connect_no_active_warn": "Tidak ada game aktif. Membuka Pemetaan Interaktif dalam {{count}} detik…",
     "confirm_remove_mapping": "Hapus hadiah ini dari kumpulan?",
-    "confirm_leave_unsaved": "Ada perubahan belum disimpan. Tetap pergi?"
+    "confirm_leave_unsaved": "Ada perubahan belum disimpan. Tetap pergi?",
+    "test_tooltip": "Uji coba peristiwa hadiah ini",
+    "test_emitted": "Peristiwa uji terkirim: {{name}}",
+    "test_unavailable": "Uji hanya bekerja di aplikasi desktop"
   },
   "dashboard": {
     "placeholder_username": "nama_tiktok",

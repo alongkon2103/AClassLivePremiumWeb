@@ -116,7 +116,10 @@
     "no_active_warn": "未启用任何礼物",
     "connect_no_active_warn": "没有启用的游戏 · {{count}} 秒后打开互动映射…",
     "confirm_remove_mapping": "确定要从池中移除此礼物吗?",
-    "confirm_leave_unsaved": "您有未保存的更改。仍要离开吗?"
+    "confirm_leave_unsaved": "您有未保存的更改。仍要离开吗?",
+    "test_tooltip": "测试触发此礼物事件",
+    "test_emitted": "测试事件已发送: {{name}}",
+    "test_unavailable": "测试功能仅在桌面应用中可用"
   },
   "dashboard": {
     "placeholder_username": "tiktok 用户名",

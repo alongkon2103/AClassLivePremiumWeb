@@ -28,7 +28,7 @@ const Interactive: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isDeploying, setIsDeploying] = useState(false);
 
-  
+
   // Helper to get localized field
   const getLocalized = (obj: any, field: string) => {
     const isEn = i18n.language.startsWith('en');
@@ -37,6 +37,10 @@ const Interactive: React.FC = () => {
     // Fallbacks
     return obj[`${field}_th`] || obj[`${field}_en`] || obj[field];
   };
+
+  // Tiptap stores description as HTML — strip tags for preview/line-clamp.
+  const stripHtml = (html: string) =>
+    (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -197,7 +201,16 @@ const Interactive: React.FC = () => {
                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text3 mb-4 flex items-center gap-2">
                       <Info size={16} className="text-brand" /> {t('interactive.description')}
                     </h3>
-                    <p className="text-text2 text-sm md:text-base leading-relaxed">{getLocalized(selectedProduct, 'description') || t('interactive.description')}</p>
+                    {getLocalized(selectedProduct, 'description') ? (
+                      <div
+                        className="text-text2 text-sm md:text-base leading-relaxed prose prose-invert prose-sm max-w-none
+                          prose-headings:text-white prose-a:text-brand prose-strong:text-white prose-img:rounded-xl
+                          prose-table:border prose-table:border-white/10 prose-th:bg-white/5 prose-td:border-white/5"
+                        dangerouslySetInnerHTML={{ __html: getLocalized(selectedProduct, 'description') }}
+                      />
+                    ) : (
+                      <p className="text-text2 text-sm md:text-base leading-relaxed">{t('interactive.description')}</p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 pt-4">
@@ -302,7 +315,7 @@ const Interactive: React.FC = () => {
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-black text-base md:text-lg group-hover:text-brand transition-colors truncate pr-4">{getLocalized(product, 'name')}</h3>
                 </div>
-                <p className="text-text3 text-[10px] md:text-xs line-clamp-2 min-h-[30px] md:min-h-[32px] leading-relaxed mb-4 flex-1">{getLocalized(product, 'description') || t('interactive.description')}</p>
+                <p className="text-text3 text-[10px] md:text-xs line-clamp-2 min-h-[30px] md:min-h-[32px] leading-relaxed mb-4 flex-1">{stripHtml(getLocalized(product, 'description')) || t('interactive.description')}</p>
 
                 <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
                   <div className="flex items-center gap-2">

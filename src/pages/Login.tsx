@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Titlebar from '../components/Titlebar';
-import { AlertCircle, Loader2, Globe, Shield } from 'lucide-react';
+import { AlertCircle, Loader2, Globe, Shield, Wrench } from 'lucide-react';
 import { authApi } from '../services/api';
+
+// ⚠️ Flip to false to re-open the app. When true: blocks both existing-token
+// auto-login and the OAuth buttons, and shows a full-screen popup.
+const MAINTENANCE_MODE = true;
 
 const Login: React.FC = () => {
   const { t } = useTranslation();
@@ -39,6 +43,10 @@ const Login: React.FC = () => {
       }
     };
 
+    if (MAINTENANCE_MODE) {
+      setLoading(false);
+      return;
+    }
     // If we're NOT in a callback, check existing session
     if (!searchParams.get('token')) {
       checkExistingSession();
@@ -114,6 +122,53 @@ const Login: React.FC = () => {
     <div className="h-screen flex flex-col bg-bg">
       <Titlebar title="A Class Store Pro - Authentication" showControls={true} />
 
+      {MAINTENANCE_MODE && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-lg bg-surface border border-yellow-500/40 rounded-2xl p-8 md:p-10 shadow-2xl text-center relative overflow-hidden">
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-yellow-500/10 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-yellow-500/10 rounded-full blur-3xl" />
+
+            <div className="relative">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center">
+                <Wrench size={44} className="text-yellow-400 animate-pulse" />
+              </div>
+
+              <div className="inline-block px-3 py-1 mb-4 rounded-full bg-yellow-500/15 border border-yellow-500/30">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-yellow-400">
+                  Maintenance · ปิดปรับปรุง
+                </span>
+              </div>
+
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">
+                ปิดปรับปรุงระบบ
+              </h2>
+              <p className="text-yellow-400 font-semibold text-sm mb-6">
+                System Under Maintenance
+              </p>
+
+              <div className="space-y-3 mb-6">
+                <p className="text-text2 text-sm md:text-base leading-relaxed">
+                  ขณะนี้ระบบกำลังอยู่ระหว่างการปรับปรุงครั้งใหญ่<br />
+                  ขออภัยในความไม่สะดวก กรุณากลับมาใหม่อีกครั้งในภายหลัง
+                </p>
+                <div className="h-px w-16 bg-yellow-500/30 mx-auto" />
+                <p className="text-text3 text-xs md:text-sm leading-relaxed">
+                  We're performing scheduled maintenance to improve your experience.<br />
+                  Please check back later. Thank you for your patience.
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-white/5">
+                <p className="text-[10px] text-text3/60 font-mono uppercase tracking-widest">
+                  Login temporarily disabled
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-[400px] bg-surface border border-border rounded-2xl p-10 shadow-2xl relative overflow-hidden text-center">
           {/* Decorative background element */}
@@ -142,7 +197,7 @@ const Login: React.FC = () => {
             <div className="grid grid-cols-1 gap-4">
               <button
                 onClick={() => handleOAuthLogin('google')}
-                disabled={loading}
+                disabled={loading || MAINTENANCE_MODE}
                 className="flex items-center justify-center gap-3 h-14 bg-white hover:bg-gray-100 text-black rounded-xl transition-all active:scale-[0.95] shadow-lg disabled:opacity-50"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -156,7 +211,7 @@ const Login: React.FC = () => {
 
               <button
                 onClick={() => handleOAuthLogin('discord')}
-                disabled={loading}
+                disabled={loading || MAINTENANCE_MODE}
                 className="flex items-center justify-center gap-3 h-14 bg-[#5865F2] hover:bg-[#4752c4] text-white rounded-xl transition-all active:scale-[0.95] shadow-lg disabled:opacity-50"
               >
                 <svg className="w-5 h-5" viewBox="0 0 127.14 96.36">

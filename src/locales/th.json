@@ -116,7 +116,10 @@
     "no_active_warn": "ยังไม่มีของขวัญที่ใช้",
     "connect_no_active_warn": "ยังไม่มีเกมเปิดใช้ กำลังเปิดหน้าตั้งค่าใน {{count}} วิ…",
     "confirm_remove_mapping": "ต้องการลบของขวัญนี้ออกจากชุดใช่ไหม?",
-    "confirm_leave_unsaved": "คุณยังไม่ได้บันทึก ยืนยันออกจากหน้านี้?"
+    "confirm_leave_unsaved": "คุณยังไม่ได้บันทึก ยืนยันออกจากหน้านี้?",
+    "test_tooltip": "ทดสอบยิงของขวัญนี้",
+    "test_emitted": "ส่ง event ทดสอบ: {{name}}",
+    "test_unavailable": "ปุ่มทดสอบใช้ได้เฉพาะในโปรแกรมเดสก์ท็อป"
   },
   "dashboard": {
     "placeholder_username": "ชื่อ tiktok",

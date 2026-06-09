@@ -116,7 +116,10 @@
     "no_active_warn": "no active gift",
     "connect_no_active_warn": "No game is active. Opening Interactive Mapping in {{count}}s…",
     "confirm_remove_mapping": "Remove this gift from the pool?",
-    "confirm_leave_unsaved": "You have unsaved changes. Leave anyway?"
+    "confirm_leave_unsaved": "You have unsaved changes. Leave anyway?",
+    "test_tooltip": "Test fire this gift event",
+    "test_emitted": "Test event sent: {{name}}",
+    "test_unavailable": "Test only works inside the desktop app"
   },
   "dashboard": {
     "placeholder_username": "tiktok_username",

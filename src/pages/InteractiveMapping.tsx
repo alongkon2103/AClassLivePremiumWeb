@@ -19,7 +19,8 @@ import {
   Gem,
   Power,
   Gamepad2,
-  Heart
+  Heart,
+  Play
 } from 'lucide-react';
 import { interactiveApi } from '../services/api';
 import { useAdmin } from '../context/AdminContext';
@@ -197,6 +198,22 @@ const InteractiveMapping: React.FC = () => {
       console.log('🔥 registerSession called:', { orderId, username, roomUser }); // ← เพิ่มตรงนี้
       await interactiveApi.registerSession(orderId, username);
       console.log('✅ registerSession success'); // ← และตรงนี้
+      // Pre-register on the relay middleware (api.aclassstore.com) so the Test
+      // button can push events without first calling /register — that call
+      // resets the relay's per-Roblox-server polling state and makes Roblox
+      // skip the first pushed event. Doing it here means Roblox's first poll
+      // (which happens regardless after register) finds an empty queue, and
+      // every later test push lands cleanly in the queue Roblox is already
+      // tracking. Best-effort: failures are logged but don't block activation.
+      const token = localStorage.getItem('aclass_token');
+      if (token && (window as any).electron?.invoke) {
+        try {
+          const reg = await (window as any).electron.invoke('interactive:middleware-register', { orderId, username, token });
+          console.log('[Middleware] pre-register:', reg);
+        } catch (e) {
+          console.warn('[Middleware] pre-register failed (non-fatal):', e);
+        }
+      }
       setActiveOrderId(orderId);
       localStorage.setItem('aclass_active_order_id', orderId);
       toast.success('Game session activated successfully');
@@ -343,6 +360,109 @@ const InteractiveMapping: React.FC = () => {
       ),
     );
     setIsDirty(true);
+  };
+
+  // Fake-emit a TikTok event through Electron so the engine treats it identically
+  // to a real gift/like AND the central server (api.aclassstore.com/push-event)
+  // receives it — that's the path downstream games (Roblox etc.) poll. Without
+  // the server hop the test would only fire local actions (RCON, key press) and
+  // never reach a remote game.
+  //
+  // Payload shape mirrors tiktokService.js callbacks EXACTLY:
+  //   - `username` here is the SENDER's uniqueId, not the host. The middleware
+  //     keys streak state on (host, sender, giftId), so reusing the host name
+  //     would conflict if the host ever sends themselves gifts during testing.
+  //   - `id` MUST be unique per click — server dedups on (host, id, giftId, repeatCount).
+  //   - `repeatEnd` is intentionally OMITTED. When repeatEnd === true and
+  //     repeatCount === 1 with lastCount === 0, the middleware logs the gift but
+  //     RETURNS WITHOUT PUSHING TO QUEUE (so the game would never see it).
+  //     Omitting repeatEnd makes the streak tracker treat it as a standalone push.
+  const handleTestEmit = (orderId: string, mapping: UserFunctionGift) => {
+    const gift = mapping.gifts;
+    if (!gift || gift.id === NONE_GIFT.id) return;
+    if (!(window as any).electron?.send) {
+      toast.error(t('interactive_mapping.test_unavailable'));
+      return;
+    }
+    // Host username — used for /register + /push-event addressing, matches
+    // exactly what handleToggleGameActivation registered with the server.
+    const hostUsername = roomUser || localStorage.getItem('aclass_last_tiktok_user') || 'streamer';
+    const context = {
+      token: localStorage.getItem('aclass_token'),
+      username: hostUsername,
+      orderId,
+    };
+    // Sender identity — looks like a real TikTok viewer, not the host.
+    const senderUniqueId = 'test_sender';
+    const senderNickname = 'Test Sender';
+    const uniqueEventId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const sendEvent = (type: string, data: any) => {
+      (window as any).electron?.send('test:emit-tiktok-event', { type, data, context });
+    };
+    const baseSender = {
+      username: senderUniqueId,
+      nickname: senderNickname,
+      profilePictureUrl: null,
+    };
+
+    // Dispatch by the gift's trigger_type so a "follow" mapping fires a follow
+    // event, a "like" mapping fires a like event, etc. — not everything as gift.
+    // Normalize to lowercase: seed data uses 'gift'/'like'/'follow'/'none' but
+    // the in-app NONE_GIFT constant uses uppercase 'GIFT'.
+    const triggerType = (gift.trigger_type || 'gift').toLowerCase();
+
+    if (triggerType === 'like') {
+      sendEvent('like', {
+        ...baseSender,
+        likeCount: mapping.trigger_threshold || 1,
+        totalLikeCount: mapping.trigger_threshold || 1,
+      });
+    } else if (triggerType === 'follow' || triggerType === 'share') {
+      // Roblox treats follow/social interchangeably; middleware only routes
+      // 'follow' through tiktok:follow channel, so emit as follow.
+      sendEvent('follow', { ...baseSender });
+    } else {
+      // Default: gift event. Real TikTok emits TWO events per gift:
+      //   1) repeatEnd:false — server queues this one (delta > 0)
+      //   2) repeatEnd:true  — server logs but skips (delta == 0), used as
+      //      streak-end marker for consumers
+      // Matching this exactly keeps payloads indistinguishable from live TikTok,
+      // so any game-side filter on repeatEnd:false won't drop the test event.
+      //
+      // diamond is forced to 0 in test mode so:
+      //   - middleware log shows "(💎 0)" → instantly recognizable as a test
+      //   - Roblox leaderboard / ranking scores (which multiply diamondCount
+      //     by 10) don't get inflated by repeated test clicks
+      //   - the action still fires — gift→function trigger uses giftId match,
+      //     not diamond value, so functionality is unaffected
+      const diamonds = 0;
+      const baseGiftData = {
+        giftId: gift.id,
+        giftName: gift.name,
+        ...baseSender,
+        diamond: diamonds,
+        diamondCount: diamonds,
+        repeatCount: 1,
+        totalValue: diamonds,
+      };
+      sendEvent('gift', {
+        ...baseGiftData,
+        id: uniqueEventId,
+        repeatEnd: false,
+        timestamp: new Date().toISOString(),
+      });
+      // Streak-end marker after a small delay, mirroring real TikTok timing.
+      setTimeout(() => {
+        sendEvent('gift', {
+          ...baseGiftData,
+          id: `${uniqueEventId}-end`,
+          repeatEnd: true,
+          timestamp: new Date().toISOString(),
+        });
+      }, 250);
+    }
+    toast.success(t('interactive_mapping.test_emitted', { name: gift.name }));
   };
 
   const saveMappings = async (orderId: string) => {
@@ -728,6 +848,15 @@ const InteractiveMapping: React.FC = () => {
                                           : t('interactive_mapping.set_active_tooltip')}
                                       >
                                         <Power size={13} strokeWidth={2.5} />
+                                      </button>
+
+                                      <button
+                                        onClick={() => handleTestEmit(order.id, mapping)}
+                                        disabled={!isActive || !isEnabled || gift?.id === NONE_GIFT.id}
+                                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/30 shrink-0 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                        title={t('interactive_mapping.test_tooltip')}
+                                      >
+                                        <Play size={11} fill="currentColor" strokeWidth={2.5} />
                                       </button>
 
                                       <button

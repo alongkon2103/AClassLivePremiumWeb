@@ -151,12 +151,19 @@ export const EventEngineProvider: React.FC<{ children: ReactNode }> = ({ childre
             }
 
             if (match) {
-               console.log(`[INTERACTIVE] Triggering function ${mapping.product_functions.name} for product ${product.products.slug}`);
+               // user_function_gifts rows only join `gifts`, not `product_functions`,
+               // so resolve the function name via the product's function list using
+               // the foreign key. Falls back to the raw id if the lookup somehow misses.
+               const fnDef = product.products?.product_functions?.find(
+                 (f: any) => f.id === mapping.function_id
+               );
+               const fnName = fnDef?.name || mapping.function_id;
+               console.log(`[INTERACTIVE] Triggering function ${fnName} for product ${product.products?.slug}`);
                // Broadcast via local server for game (e.g. Roblox) to pick up
                window.electron.send('settings:save', {
                   type: 'INTERACTIVE_TRIGGER',
-                  product: product.products.slug,
-                  function: mapping.product_functions.name,
+                  product: product.products?.slug,
+                  function: fnName,
                   timestamp: Date.now()
                });
             }
